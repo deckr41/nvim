@@ -4,6 +4,8 @@
 > collaboration and prompt engineering—laying the foundation for multi-agent AI
 > workflows within your projects.
 
+![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
+
 ## Table of contents
 
 <!-- vim-markdown-toc GFM -->
