@@ -1,8 +1,8 @@
 # deckr41/nvim
 
-> A NeoVim plugin for augmenting your coding with LLM capabilities, focusing on
-> mindful collaboration and advanced prompt engineering—laying the foundation
-> for multi-agent AI workflows within your projects.
+> A NeoVim plugin to augument coding with LLM abilities, focusing on mindful
+> collaboration and prompt engineering—laying the foundation for multi-agent AI
+> workflows within your projects.
 
 ## Table of contents
 
@@ -26,11 +26,10 @@
 ## Thoughts
 
 :godmode: **Unblockr Mode**  
-Use LLM suggestions when you're stuck or to save yourself a web search without
-breaking flow. Avoid relying on it for all the things all the time; give
-yourself a few seconds, a few minutes, or if you're having a good day, a few
-hours. *tab-coding* can be detrimental if used without patience and
-understanding—it can turn into something akin to *doom-scrolling*.
+Use LLM suggestions when stuck, saving yourself a web search without breaking
+flow. Avoid relying on it for all the things all the time; give yourself a few
+seconds, minutes, even hours :scream:. *Tab-coding* can be detrimental without
+patience and understanding - risking a *doom-scrolling* effect.
 
 :construction: **Prompt Engineering**  
 Create and iterate over `commands`, a combination of `system_prompt`, `prompt`,
