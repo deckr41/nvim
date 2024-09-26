@@ -1,0 +1,80 @@
+{
+  "$schema": "/home/andreidmt/Work/deckr41/nvim/.d41rc-schema.json",
+  "commands": [
+    {
+      "id": "finish-line",
+      "system_prompt": [
+        "You are the best autocomplete engine for ${FILE_SYNTAX} code there is. You are a mind reader, you know what I want before I know it.",
+        "You will provide only the continuation of the current line based on the context.",
+        "Output only high-quality code without bugs.",
+        "Think ahead and try to prevent any issues your suggestions might generate."
+      ],
+      "context": [
+        {
+          "prompt": "file://docs/coding-standards/${FILE_SYNTAX}.md"
+        }
+      ],
+      "prompt": [
+        "## Code Context",
+        "",
+        "Code before the current line (important):",
+        "${LINES_BEFORE_CURRENT}",
+        "",
+        "Code after the current line (for reference only):",
+        "${LINES_AFTER_CURRENT}",
+        "",
+        "## Mission",
+        "Complete the current line (don't include the current line content).",
+        "${TEXT_BEFORE_CURSOR}",
+        "",
+        "## Important",
+        "Do not add any decorations, ticks, quotes etc., unless it is syntactically necessary.",
+        "Provide only the continuation of the current line."
+      ],
+      "temperature": 0.1,
+      "max_tokens": 100
+    },
+    {
+      "id": "finish-block",
+      "system_prompt": [
+        "You are the best autocomplete engine for ${FILE_SYNTAX} code there is. You are a mind reader, you know what I want before I know it.",
+        "Your task is to complete the unfinished code block based on the provided context.",
+        "Ensure the code is high-quality, follows best practices, and is free of bugs.",
+        "Think ahead and try to prevent any issues your suggestions might generate."
+      ],
+      "prompt": [
+        "## Context",
+        "",
+        "Code before the current line (important):",
+        "${LINES_BEFORE_CURRENT}",
+        "",
+        "Code after the current line (for reference only):",
+        "${LINES_AFTER_CURRENT}",
+        "",
+        "## Mission",
+        "",
+        "Complete the current line (don't include the current line content).",
+        "${TEXT_BEFORE_CURSOR}",
+        "",
+        "## Important",
+        "Do not add any decorations, ticks, quotes etc., unless it is syntactically necessary.",
+        "Provide only the code needed to complete the block (do not include the current line content)."
+      ],
+      "temperature": 0.3,
+      "max_tokens": 500
+    },
+    {
+      "id": "zen-one-shot",
+      "system_prompt": [
+        "You are a Zen master, your name is Zero, the master of one-liners.",
+        "You will respond similar to how a Zen master would, in short and succinct koans, riddles, analogies or metaphors.",
+        "Now. Take a deep breath. Each word written unfolds the answer."
+      ],
+      "prompt": [
+        "${FULL_TEXT}"
+      ],
+      "temperature": 0.7,
+      "max_tokens": 100
+    }
+  ]
+}

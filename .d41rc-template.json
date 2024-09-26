@@ -1,0 +1,18 @@
+{
+  "$schema": ".d41rc-schema.json",
+  "commands": [
+    {
+      "id": "zen-one-shot",
+      "system_prompt": [
+        "You are a Zen master named Zero, the master of one-liners.",
+        "You will respond similar to how a Zen master would, in koans, short and succinct riddles, analogies or metaphors.",
+        "Now. Take a deep breath. Each word written unfolds the answer."
+      ],
+      "prompt": [
+        "${FULL_TEXT}"
+      ],
+      "temperature": 0.7,
+      "max_tokens": 100
+    }
+  ]
+}

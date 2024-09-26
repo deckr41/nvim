@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "Prompt": {
+      "oneOf": [
+        {
+          "description": "A single string prompt.",
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "description": "A multiline prompt. Array items are concatenated by a new line to form the final prompt.",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "system_prompt": {
+      "$ref": "#/definitions/Prompt"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "A unique command identifier.",
+            "type": "string"
+          },
+          "system_prompt": {
+            "$ref": "#/definitions/Prompt"
+          },
+          "prompt": {
+            "$ref": "#/definitions/Prompt"
+          },
+          "temperature": {
+            "description": "The sampling temperature for the command, influencing the randomness/creativity of the output.",
+            "type": "number"
+          },
+          "max_tokens": {
+            "description": "The maximum number of tokens to be used when responding. The value is capped by the `max_tokens` of the underlying model.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "prompt"
+        ]
+      }
+    }
+  },
+  "required": [
+    "commands"
+  ]
+}
