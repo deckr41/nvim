@@ -58,11 +58,11 @@ can pull in data on demand depending on the use case:
 :books: **Retrieval-Augmented Generation (RAG) with
 [DevDocs](https://github.com/freeCodeCamp/devdocs/tree/main)** *(Work in
 Progress)*  
-Integrate devdocs.io, which combines multiple API documentations into a fast,
-organized, and searchable interface. By incorporating DevDocs,
-you can perform semantic searches over documentation and inject relevant
-snippets directly into your AI prompts. This reduces hallucinations and ensures
-the AI provides up-to-date and accurate information.
+Integrate [devdocs.io](https://devdocs.io/), which combines multiple API
+documentations into a fast, organized, and searchable interface. By
+incorporating DevDocs, you can perform semantic searches over documentation and
+inject relevant snippets directly into your AI prompts. This reduces
+hallucinations and ensures the AI provides up-to-date and accurate information.
 
 Example:
 
@@ -103,7 +103,8 @@ plugin will default to using Anthropic.
 
 ### Full Configuration Options
 
-You can customize the plugin by providing additional options. Below is the default configuration with all available settings:
+You can customize the plugin by providing additional options. Below is the
+default configuration with all available settings:
 
 ```lua
 {
@@ -175,10 +176,12 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 **INSERT** mode:
 
-- **`<Shift-RightArrow>`**: Trigger the default command (`finish-line`) or accept the current suggestion.
+- **`<Shift-RightArrow>`**: Trigger the default command (`finish-line`) or
+  accept the current suggestion.
   - Pressing `<S-Right>` once will trigger the `finish-line` command.
   - Pressing `<S-Right>` twice quickly will trigger the `finish-block` command.
-- **`<Tab>`**, **`<CR>`** or **`<S-Right>`** with a suggestion available: Accept the suggestion and insert it into the buffer.
+- **`<Tab>`**, **`<CR>`** or **`<S-Right>`** with a suggestion available:
+  Accept the suggestion and insert it into the buffer.
 - **`<Escape>`**: Dismiss the current suggestion without inserting.
 
 > [!NOTE]
@@ -187,7 +190,8 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 ### Commands
 
-- **`:D41Eject`**: Ejects the default `.d41rc` file into your current working directory for customization.
+- **`:D41Eject`**: Ejects the default `.d41rc` file into your current working
+  directory for customization.
 
 ## Development
 
