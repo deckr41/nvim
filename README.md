@@ -1,8 +1,8 @@
 # deckr41/nvim
 
-> A NeoVim plugin to augument coding with LLM abilities, focusing on mindful
-> collaboration and prompt engineering—laying the foundation for multi-agent AI
-> workflows within your projects.
+> A Neovim plugin that augments coding with LLM abilities, enabling per-project
+> AI customization through colocated `.d41rc` files that act as agents for your
+> project folders or monorepo packages.
 
 ![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
 
@@ -16,6 +16,7 @@
     * [Full Configuration Options](#full-configuration-options)
     * [Setting Up API Keys](#setting-up-api-keys)
 * [Usage](#usage)
+    * [Modes](#modes)
     * [Default Keybindings](#default-keybindings)
     * [Commands](#commands)
 * [Development](#development)
@@ -27,18 +28,26 @@
 
 ## Thoughts
 
-:godmode: **Unblockr Mode**  
-Use LLM suggestions when stuck, saving yourself a web search without breaking
-flow. Avoid relying on it for all the things all the time; give yourself a few
-seconds, minutes, even hours :scream:. *Tab-coding* can be detrimental without
-patience and understanding - risking a *doom-scrolling* effect.
-
 :construction: **Prompt Engineering**  
 Create and iterate over `commands`, a combination of `system_prompt`, `prompt`,
 and `context`. Commands can be project-wide or specific to a library in your
 monorepo through localized `.d41rc` files. This approach allows per-project AI
 customization, effectively turning folders into agents—laying the groundwork
 for multi-agent AI workflows.
+
+**Multiple gears**  
+:godmode: `easy-does-it`  
+Use LLM suggestions when stuck, saving yourself a web search without breaking
+flow. Press `<Shift-RightArrow>` to trigger suggestions on demand.  
+Avoid relying on it for all the things all the time; give yourself a few
+seconds, minutes, even hours :scream:. 
+
+:rocket: `r-for-rocket`  
+Use when you already know what you're doing and want to complete a line or
+block quickly. This mode triggers suggestions automatically as you type,
+debounced with a configurable timeout. Be mindful that *tab-coding* can be
+detrimental without patience and understanding - risking a *doom-scrolling*
+effect.
 
 :hammer: **Tools** *(Work in Progress)*  
 Enhance `commands` with extra features by incorporating custom `tools`. For
@@ -112,6 +121,16 @@ default configuration with all available settings:
 {
   "deckr41/nvim",
   opts = {
+    -- Mode configuration
+    mode = {
+      -- Choose between "easy-does-it" and "r-for-rocket"
+      type = "easy-does-it",
+
+      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
+      timeout = 1000,
+    },
+
+    -- Backend configurations
     backends = {
       openai = {
         url = "https://api.openai.com/v1/chat/completions",
@@ -173,6 +192,33 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 > Integration with password managers is somewhere in the backlog. 
 
 ## Usage
+
+### Modes
+
+The plugin offers two modes to cater to different coding styles:
+
+- `easy-does-it`  
+This is the default mode. Trigger suggestions on demand by pressing
+`<Shift-RightArrow>`. Ideal for developers who prefer focused coding and seek
+AI assistance only when needed. Helps prevent over-reliance on AI and maintains
+coding flow.
+- `r-for-rocket`  
+Suggestions are triggered automatically as you type, debounced with a
+configurable timeout (default is 1000ms). This mode provides continuous AI
+assistance, akin to having an AI co-pilot. Useful for those who prefer
+real-time suggestions.
+
+You can switch between modes by setting the type in the mode configuration:
+
+```lua
+opts = {
+  mode = {
+    type = "r-for-rocket",
+    -- Adjust the debounce timeout as needed
+    timeout = 1000,
+  }
+}
+```
 
 ### Default Keybindings
 
