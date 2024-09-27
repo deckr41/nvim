@@ -1,8 +1,8 @@
 # deckr41/nvim
 
-> A Neovim plugin that augments coding with LLM abilities, enabling per-project
-> AI customization through collocated `.d41rc` files that act as agents for
-> your project folders or monorepo packages.
+> A Neovim plugin that augments coding with 🤖 LLM abilities, enabling
+> per-project AI customization through 📂 collocated `.d41rc` files that act as
+> agents for your project folders or monorepo packages. 
 
 ![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
 
