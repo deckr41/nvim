@@ -1,6 +1,3 @@
---- @class Logger
-local Logger = require("deckr41.utils.logger")
-
 --- @class FnUtils
 local M = {}
 

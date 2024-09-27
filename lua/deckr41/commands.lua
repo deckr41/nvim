@@ -1,13 +1,7 @@
---- @class Logger
-local Logger = require("deckr41.utils.logger")
---- @class FSUtils
-local FSUtils = require("deckr41.utils.fs")
---- @class TableUtils
-local TableUtils = require("deckr41.utils.table")
---- @class ArrayUtils
-local ArrayUtils = require("deckr41.utils.array")
---- @class FnUtils
-local FnUtils = require("deckr41.utils.fn")
+local ArrayUtils = require("deckr41.utils.array") --- @class ArrayUtils
+local FSUtils = require("deckr41.utils.fs") --- @class FSUtils
+local FnUtils = require("deckr41.utils.fn") --- @class FnUtils
+local Logger = require("deckr41.utils.logger") --- @class Logger
 
 --- @class RCFileCommand
 --- @field id string

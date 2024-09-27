@@ -1,5 +1,4 @@
---- @class Logger
-local Logger = require("deckr41.utils.logger")
+local Logger = require("deckr41.utils.logger") --- @class Logger
 
 --- @class TableUtils
 local M = {}
@@ -41,13 +40,21 @@ M.merge = function(a, b)
   return result
 end
 
---- Extend a table with another
---- @param a table First table
---- @param b table Second table
-M.deep_extend = function(a, b)
-  local result = a
-  for k, v in pairs(b) do
-    if type(v) == "table" and type(result[k] or false) == "table" then
+--- Extend a table, `target`, with data from another, `extra`.
+--- @param target table First table
+--- @param extra table Second table
+--- @param opts ?{ ignore_nil?: boolean, mutate?: boolean }
+--- @return table: Extended `target` table. If `mutate` is false (default)
+M.deep_extend = function(target, extra, opts)
+  opts = opts or {}
+  local ignore_nil = opts.ignore_nil or true
+  local mutate = opts.mutate or false
+  local result = mutate and target or vim.tbl_deep_extend("force", {}, target)
+
+  for k, v in pairs(extra) do
+    if v == nil and not ignore_nil then
+      result[k] = nil
+    elseif type(v) == "table" and type(result[k] or false) == "table" then
       result[k] = M.deep_extend(result[k], v)
     else
       result[k] = v
