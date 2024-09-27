@@ -14,8 +14,8 @@
 :gear: **Multiple gears**  
 
 - **On-demand**: Unblock with `<Shift-RightArrow>`.
-- **Real-time**: Get live suggestions with a configurable timeout. Tread
-  carefully, *tab-coding* rhymes with *doom-scrolling*.
+- **Real-time**: Get live suggestions with a configurable timeout.  
+  Tread carefully, *tab-coding* rhymes with *doom-scrolling*.
 
 :hammer: **Tools** *(Work in Progress)*  
 
