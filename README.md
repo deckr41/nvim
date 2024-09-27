@@ -1,8 +1,8 @@
 # deckr41/nvim
 
 > A Neovim plugin that augments coding with LLM abilities, enabling per-project
-> AI customization through colocated `.d41rc` files that act as agents for your
-> project folders or monorepo packages.
+> AI customization through collocated `.d41rc` files that act as agents for
+> your project folders or monorepo packages.
 
 ![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
 
@@ -36,18 +36,12 @@ customization, effectively turning folders into agents—laying the groundwork
 for multi-agent AI workflows.
 
 **Multiple gears**  
-:godmode: `easy-does-it`  
-Use LLM suggestions when stuck, saving yourself a web search without breaking
-flow. Press `<Shift-RightArrow>` to trigger suggestions on demand.  
-Avoid relying on it for all the things all the time; give yourself a few
-seconds, minutes, even hours :scream:. 
-
-:rocket: `r-for-rocket`  
-Use when you already know what you're doing and want to complete a line or
-block quickly. This mode triggers suggestions automatically as you type,
-debounced with a configurable timeout. Be mindful that *tab-coding* can be
-detrimental without patience and understanding - risking a *doom-scrolling*
-effect.
+- :godmode: `easy-does-it`  
+  Trigger LLM suggestions with `<Shift-RightArrow>` when stuck. Take your time;
+  it's worth it.
+- :rocket: `r-for-rocket`  
+  For rapid coding, suggestions appear as you type, with a configurable
+  timeout. Tread carefully, *tab-coding* rhymes with *doom-scrolling*.
 
 :hammer: **Tools** *(Work in Progress)*  
 Enhance `commands` with extra features by incorporating custom `tools`. For
