@@ -1,13 +1,9 @@
+local TableUtils = require("deckr41.utils.table") --- @class TableUtils
 local curl = require("plenary.curl")
-
---- @class Logger
-local Logger = require("deckr41.utils.logger")
---- @class TableUtils
-local TableUtils = require("deckr41.utils.table")
 
 --- @alias BackendServiceNames "openai"|"anthropic"
 
---- @class BackendServiceConfig
+--- @class BackendService
 --- @field name string
 --- @field url string
 --- @field api_key ?string
@@ -16,8 +12,8 @@ local TableUtils = require("deckr41.utils.table")
 --- @field temperature number
 
 --- @class BackendModule
---- @field openai BackendServiceConfig
---- @field anthropic BackendServiceConfig
+--- @field openai BackendService
+--- @field anthropic BackendService
 local M = {
   openai = {
     name = "OpenAI",
@@ -50,7 +46,7 @@ local M = {
 }
 
 -- Prepare request payload OpenAI request
----@param backend BackendServiceConfig
+---@param backend BackendService
 ---@param opts BackendAskOpts
 ---@return string
 ---@return table
@@ -76,7 +72,7 @@ local prepare_openai_request = function(backend, opts)
 end
 
 -- Prepare request payload Anthropic request
----@param backend BackendServiceConfig
+---@param backend BackendService
 ---@param opts BackendAskOpts
 ---@return string
 ---@return table
@@ -218,11 +214,11 @@ function M:ask(name, opts)
   })
 end
 
---- Update internal configs
---- @param backend_name BackendServiceNames
---- @param opts table
-function M:set_config(backend_name, opts)
-  TableUtils.deep_extend(self[backend_name], opts)
+--- Update internal configs for a specific backend
+--- @param name BackendServiceNames
+--- @param config table
+function M:set_config(name, config)
+  self[name] = vim.tbl_deep_extend("force", self[name], config)
 end
 
 --- Predicate checking if a backend service is defined
@@ -244,8 +240,7 @@ end
 --- @param name string
 --- @return boolean
 function M:is_backend_usable(name)
-  local backend = self[name]
-  return backend ~= nil and backend.api_key ~= nil
+  return self[name] ~= nil and self[name].api_key ~= nil
 end
 
 return M

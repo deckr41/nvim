@@ -1,52 +1,43 @@
+--- Utilities imports
+local FnUtils = require("deckr41.utils.fn") --- @type FnUtils
+local Logger = require("deckr41.utils.logger") --- @type Logger
+local StringUtils = require("deckr41.utils.string") --- @type StringUtils
+local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
+local WindowUtils = require("deckr41.utils.window") --- @type WindowUtils
 local VimAPI = vim.api
 
---- Functional utilities imports
---- @type Logger
-local Logger = require("deckr41.utils.logger")
---- @type TelescopeUtils
-local TelescopeUtils = require("deckr41.utils.telescope")
---- @type StringUtils
-local StringUtils = require("deckr41.utils.string")
---- @type WindowUtils
-local WindowUtils = require("deckr41.utils.window")
---- @type TableUtils
-local TableUtils = require("deckr41.utils.table")
-
 --- Domain imports
---- @type CommandsModule
-local Commands = require("deckr41.commands")
---- @type SuggestionModule
-local Suggestion = require("deckr41.suggestion")
---- @type BackendModule
-local Backend = require("deckr41.backend")
+local Backend = require("deckr41.backend") --- @type BackendModule
+local Commands = require("deckr41.commands") --- @type CommandsModule
+local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
 
----
-
---- @class Deckr41PluginConfig
---- @field backends ?table<BackendServiceNames, BackendServiceConfig>
+--- @class ConfigModule
+--- @field backends ?table<BackendServiceNames, BackendService>
 --- @field active_backend ?BackendServiceNames
 --- @field active_model ?string
 --- @field default_command string
 --- @field default_double_command string
+--- @field mode { type: "easy-does-it"|"r-for-rocket", timeout: integer }
 
 --- @class Deckr41PluginState
 --- @field running_command_job ?Job
 --- @field shift_arrow_right_count integer
 
---- Plugin config and global state
 --- @class Deckr41Plugin
---- @field config ?Deckr41PluginConfig
+--- @field config ?ConfigModule
 --- @field state Deckr41PluginState
 local M = {
-  -- User config from plugin loading
   config = {
-    backends = nil,
-    active_backend = nil,
-    active_model = nil,
+    -- backends = nil,
+    -- active_backend = nil,
+    -- active_model = nil,
     default_command = "finish-line",
     default_double_command = "finish-block",
+    mode = {
+      type = "easy-does-it",
+      timeout = 400,
+    },
   },
-  -- Runtime state
   state = {
     -- Plenary Job of currently running command
     running_command_job = nil,
@@ -148,34 +139,33 @@ M.select_and_apply_command_or_accept_suggestion = function()
   end
 end
 
----
+--- Setup key mappings based on the mode
 local setup_keymaps = function()
-  -- Trigger the LLM magic or apply (write to the current buffer the existing
-  -- suggestion/response)
+  if M.config.mode.type == "easy-does-it" then
+    -- In 'easy-does-it' mode, use Shift+RightArrow to trigger suggestions
+    VimAPI.nvim_set_keymap("i", "<S-Right>", "", {
+      noremap = true,
+      silent = true,
+      callback = function()
+        if Suggestion:is_finished() then
+          Suggestion:apply()
+        elseif not Suggestion.is_loading then
+          M.state.shift_arrow_right_count = M.state.shift_arrow_right_count + 1
 
-  VimAPI.nvim_set_keymap("i", "<S-Right>", "", {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if Suggestion:is_finished() then
-        Suggestion:apply()
-      elseif not Suggestion.is_loading then
-        M.state.shift_arrow_right_count = M.state.shift_arrow_right_count + 1
+          vim.defer_fn(function()
+            if M.state.shift_arrow_right_count == 1 then
+              run_command(M.config.default_command)
+            elseif M.state.shift_arrow_right_count == 2 then
+              run_command(M.config.default_double_command)
+            end
+            M.state.shift_arrow_right_count = 0
+          end, 200)
+        end
+      end,
+    })
+  end
 
-        vim.defer_fn(function()
-          if M.state.shift_arrow_right_count == 1 then
-            run_command(M.config.default_command)
-          end
-          if M.state.shift_arrow_right_count == 2 then
-            run_command(M.config.default_double_command)
-          end
-          M.state.shift_arrow_right_count = 0
-        end, 200)
-      end
-    end,
-  })
-
-  -- Keybindings that only work when the suggestion box is visible
+  -- Keybindings that work when the suggestion box is visible
   local keybinds = {
     ["<Tab>"] = function()
       if Suggestion:is_finished() and Suggestion.text ~= "" then
@@ -210,7 +200,7 @@ local setup_keymaps = function()
   end
 end
 
----
+--- Setup autocommands based on the mode
 local setup_autocmds = function()
   -- Close the Suggestion box and stop the current command if running
   -- when moving the cursor
@@ -227,10 +217,32 @@ local setup_autocmds = function()
       if Suggestion.is_visible then Suggestion:reset() end
     end,
   })
+
+  if M.config.mode.type == "r-for-rocket" then
+    -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
+    local debounce_time = M.config.mode.timeout or 500
+
+    -- Debounced function to run the default command
+    local debounced_run_command = FnUtils.debounce(function()
+      if not Suggestion.is_loading and not Suggestion.is_visible then
+        run_command(M.config.default_command)
+      end
+    end, { reset_duration = debounce_time })
+
+    VimAPI.nvim_create_autocmd("InsertEnter", {
+      group = augroup,
+      callback = function() debounced_run_command() end,
+    })
+
+    VimAPI.nvim_create_autocmd("TextChangedI", {
+      group = augroup,
+      callback = function() debounced_run_command() end,
+    })
+  end
 end
 
----
---- @param backend_configs table<string, BackendServiceConfig>
+--- Configure available backends
+--- @param ?backend_configs table<string, Backend>
 local setup_backends = function(backend_configs)
   if not backend_configs then return end
 
@@ -251,26 +263,12 @@ local setup_backends = function(backend_configs)
 end
 
 --- Main plugin entry point
---- @param opts ?Deckr41PluginConfig
+--- @param opts ?ConfigModule
 M.setup = function(opts)
-  opts = opts or {}
-
-  --
   -- Parse user configuration
-  --
+  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
 
-  TableUtils.deep_extend(M.config, {
-    active_backend = opts.active_backend,
-    active_model = opts.active_model,
-    default_command = opts.default_command,
-    default_double_command = opts.default_double_command,
-  })
-
-  setup_backends(opts.backends)
-
-  --
-  ---
-  --
+  setup_backends(M.config.backends)
 
   if not M.config.active_backend then
     -- Prioritize Anthropic
