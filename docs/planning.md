@@ -1,111 +1,59 @@
-# deckr41Nvim planning 
-
-NeoVim plugin integrating LLMs as coding assistants with focus on prompt & context customization.
+# Poorman JIRA
 
 - Convention over configuration, infer, auto-detect
 - "Tab coding" is "doom scrolling"
 - Prioritize mnemonics and minimal keyboard shortcuts
+- The files and project are the canvas, having a separate chat buffer seams
+  a bit redundant. Maybe a scratch pad approach.
 
-- The files and project are the canvas, having a separate chat buffer seams a
-  bit redundant. Maybe a scratch pad approach
+---
 
-## Milestone #2 - 
+## Milestone #1
 
-- [ ] Password manager integration for fetching API keys
-- [ ] Support Ollama backend
-- [ ] Implement auto (once in `insert` mode, default command is triggered) and on-demand () modes.
-- [ ] Define and run commands in `visual` mode
-    - [ ] Assign commands in `.d41rc` to specific modes (`insert`, `visual`)
-    - [ ] Run commands over selected text
-- [ ] Private commands in `$HOME/.deckr41/commands.json`
-- [ ] Assign commands to 
+- Tree based `.d41rc` loading
+- INSERT/VISUAL/NORMAL modes command running
+- Backend/model runtime switching
 
-## Milestone #1 - Auto completion (MVP)
+---
 
-- [ ] Support multiple backends: OpenAI, Anthorpic
-- [ ] Provide config auto-detection and reasonable defaults while still
-  allowing full backend customization
-- [ ] Customize prompts and contexts via local `.d41rc.json` files
-- [ ] Implement real-time suggestion box with backend streaming
-- [ ] Implement `on-demand` and `auto` mode. Default is `on-demand`. 
-- [ ] Define and run commands in `insert` mode
-    - [ ] Allow default command (Shift + ArrowRight)
-    - [ ] Allow backend switching
+## Component #0 - Core
 
-## Component #0 - Storage
-
-- [ ] Postgres DB
+- [ ] Switch `active_backend` and `active_model` at runtime - `Shift+Down` + select boxes
+- [ ] Switch `mode` at runtime - `Shift+Left`
+- [ ] Run commands in VISUAL/NORMAL mode
+    - VISUAL uses the selected text in `FULL_TEXT` var
+    - NORMAL uses the entire buffer text in `FULL_TEXT` var
+    - [ ] Select command drop-down menu next to cursor
+- [x] On-demand mode, `easy-does-it`, keybindings trigger loading
+    - [x] Run `default_command` - `Shift + ArrowRight`
+    - [x] Run `default_double_command` - `Shift + 2xArrowRight`
+- [x] Real-time mode, `r-for-rocket`, automatic in insert mode as you're typing
+    - [ ] Customize default command in `mode` config
+    - [x] Run default command
+- [x] Cancel running job/command when moving cursor
 
 ## Component #1 - Backend
 
-- [ ] **[mvp]** Support OpenAI and Anthorpic
-- [ ] **[mvp]** Stream or wait for entire response
-- [ ] **[mvp]** Cancel running job/command 
-- [ ] Support Ollama 
+- [ ] Dynamic model fetching and caching
+- [ ] Ollama support 
+- [x] Anthorpic support
+- [x] OpenAI support
 
--------------
+## Component #2 - Commands
 
-### Feature #2 - [DB#2] Implement SQLite and data persistence in existing commands
+- [ ] Tree based `.d41rc` command loading and arbitration
+    - [ ] Scan and load `.d41rc` files up the directory tree, populate internal
+      tree structure on the fly as commands are ran in files. This is to avoid
+      scanning the entire dir structure recursively at startup.
+    - [ ] Recognize a file with `"root": true` to stop further scanning
+    - [ ] Implement error handling for missing or malformed `.d41rc` files
+    - [ ] Implement top-down deep merging of commands from `.d41rc` files
+    - [ ] Validate `.d41rc` files against the schema during loading
+- [x] Watch for changes of already registered `.d41rc` files and reload
+- [x] Customize prompts and contexts via internal `.d41rc`
 
-**Start**: Thursday, 16th May 2024
-**End**:
+## Component #3 - Suggestion
 
-- [x] Create `sh41 init [-hc|--health-check]` subcommand to check/setup the user's environment
-  - [x] Separate `lib/db/init` and `lib/config/init` scripts
-    - `lib/db/init` initializes the database as described in `$SH41_DB`
-    - `lib/config/init` prepares the user's environment, e.g.
-      `~/.config/shell41/.sh41rc`, with default values
-    - Both script have a `-hc|--health-check` which dont modify the system,
-      just check if everything is in place
-  - [x] Support only `sqlite` db, `postgres` just the scaffold with no actual
-    implementation
+- [ ] Move meta bar to a separate window with `toml` syntax 
+- [x] Implement real-time suggestion box
 
-- [ ] Create `settings` schema, a generic key-value store for system settings
-  like: default provider, default provider temperature, model, etc.
-- [ ] Create `conversations`, `messages`, `users` and `agents` schemas
-- [ ] Conversations must be attached to a `user_id` and `agent_id`
-
-#### Side Quests
-
-- [x] Update `log` utility script to support `LOG_LEVEL` environment variable
-- [x] Add `install.sh` and `load.sh` scripts
-  - Meant to be curl'd and executed in the user's environment
-  - Clone the repo into `~/.shell41` 
-  - Run `sh41 init`
-  - Detect user's shell and source the `load.sh` 
-  - `load.sh` creates all the necesary environment variables and sources both
-    `~/.config/shell41/.sh41rc` and `~/.config/shell41/.env` files
-  - `.env` file is meant for sensitive information like passwords and ignored
-    by a local `.gitignore` file
-- [x] Add `sh41 update` subcommand to `git pull` the repo and run `sh41 init` 
-- [x] Update `lib/conversations/build` with `--meta` functionality, allowing
-  the user to add extra information to a conversation, e.g. `--meta commit-sha
-  $(git rev-parse HEAD)`
-- [x] Update `log` utility script to support `-v|--var <name> <value>`
-  ```sh
-  log error \
-    -v "\$SH41_DB_CONNECTION" "$SH41_DB_CONNECTION" \
-    "DB file does not exist"
-  ```
-
--------------
-
-### Feature #1 - [DB#1] Introduce the concept of databases
-
-**Start**: Tuesday, 14th May 2024 
-**End**: Thursday, 16th May 2024
-
-- [x] Database #1 - introduce the concept of databases
-  - [x] `sh41 db` subcommand, `db` home in `lib`
-  - [x] `$SH41_DB` global var, `sqlite://file.db` or
-    `postgres://user:pass@host/db`
-  - [x] Add db health check in main `bin/sh41` entry if `$SH41_DB` is set
-
-#### Side Quests
-
-- [x] Refactor `bin/subcommands/*` to map 1:1 and serve as entry points for
-  underlying `lib/*` 
-  - [x] Deprecate `bin/subcommands/send` and move it to `lib/providers/send`
-  - [x] Move 3rd party backend intergrations in `lib/providers/backend`
-- [x] Add `--tag` functionality to `lib/conversations/build`, 
-  e.g. `--tag app/name --tag mission/commit-msg`
