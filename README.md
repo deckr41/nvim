@@ -35,7 +35,7 @@ monorepo through localized `.d41rc` files. This approach allows per-project AI
 customization, effectively turning folders into agents—laying the groundwork
 for multi-agent AI workflows.
 
-**Multiple gears**  
+:gear: **Multiple gears**  
 - :godmode: `easy-does-it`  
   Trigger LLM suggestions with `<Shift-RightArrow>` when stuck. Take your time;
   it's worth it.
