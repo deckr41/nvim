@@ -13,8 +13,10 @@
 
 :gear: **Multiple gears**  
 
-- **On-demand**: Unblock with `<Shift-RightArrow>`.
-- **Real-time**: Get live suggestions with a configurable timeout.  
+- **On-demand**: Unblock with `<Shift-RightArrow>`.  
+  Use LLM suggestions when stuck, saving yourself a web search without breaking
+  flow. Use custom commands for exploration and learning.
+- **Real-time**: Get as-you-type suggestions with a configurable timeout.  
   Tread carefully, *tab-coding* rhymes with *doom-scrolling*.
 
 :hammer: **Tools** *(Work in Progress)*  
