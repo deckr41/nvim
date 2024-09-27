@@ -35,7 +35,7 @@ local M = {
     default_double_command = "finish-block",
     mode = {
       type = "easy-does-it",
-      timeout = 400,
+      timeout = 1000,
     },
   },
   state = {
