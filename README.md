@@ -1,16 +1,39 @@
 # deckr41/nvim
 
-> A Neovim plugin that augments coding with 🤖 LLM abilities, enabling
-> per-project AI customization through 📂 collocated `.d41rc` files that act as
-> agents for your project folders or monorepo packages. 
+> A Neovim plugin that augments coding with 🤖 LLM capabilities, allowing
+> per-project AI customization through 📂 collocated `.d41rc` files that serve
+> as agents for your project folders—think monorepo packages.
 
 ![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
+
+:construction: **Prompt Engineering**  
+
+- Customize AI behavior with `commands` in `.d41rc` files.
+- Turn folders into AI agents, facilitating multi-agent workflows.
+
+:gear: **Multiple gears**  
+
+- **On-demand**: Unblock with `<Shift-RightArrow>`.
+- **Real-time**: Get live suggestions with a configurable timeout. Tread
+  carefully, *tab-coding* rhymes with *doom-scrolling*.
+
+:hammer: **Tools** *(Work in Progress)*  
+
+- Extend AI with custom tools for tasks like computations and API interactions.
+
+:mag: **Semantic Search** *(Work in Progress)*  
+
+- Link files or perform project-wide semantic searches to enhance AI context.
+
+:books: **Retrieval-Augmented Generation (RAG) with
+[DevDocs](https://github.com/freeCodeCamp/devdocs/tree/main)** *(Work in
+Progress)*  
+- Integrate with [devdocs.io](https://devdocs.io/) for accurate, context-rich AI responses.
 
 ## Table of contents
 
 <!-- vim-markdown-toc GFM -->
 
-* [Thoughts](#thoughts)
 * [Installation](#installation)
     * [Minimal Configuration](#minimal-configuration)
     * [Full Configuration Options](#full-configuration-options)
@@ -19,86 +42,29 @@
     * [Modes](#modes)
     * [Default Keybindings](#default-keybindings)
     * [Commands](#commands)
+* [Understanding `.d41rc`](#understanding-d41rc)
+    * [Structure and Commands](#structure-and-commands)
+    * [Variable Interpolation](#variable-interpolation)
 * [Development](#development)
     * [Code overview](#code-overview)
 * [Credits](#credits)
-* [Related Plugins](#related-plugins)
 
 <!-- vim-markdown-toc -->
-
-## Thoughts
-
-:construction: **Prompt Engineering**  
-Create and iterate over `commands`, a combination of `system_prompt`, `prompt`,
-and `context`. Commands can be project-wide or specific to a library in your
-monorepo through localized `.d41rc` files. This approach allows per-project AI
-customization, effectively turning folders into agents—laying the groundwork
-for multi-agent AI workflows.
-
-:gear: **Multiple gears**  
-- :godmode: `easy-does-it`  
-  Trigger LLM suggestions with `<Shift-RightArrow>` when stuck. Take your time;
-  it's worth it.
-- :rocket: `r-for-rocket`  
-  For rapid coding, suggestions appear as you type, with a configurable
-  timeout. Tread carefully, *tab-coding* rhymes with *doom-scrolling*.
-
-:hammer: **Tools** *(Work in Progress)*  
-Enhance `commands` with extra features by incorporating custom `tools`. For
-example, you can define tools that perform specific tasks like scientific
-computations, interact with custom APIs, or generate graphs. This enables more
-complex and powerful interactions, giving more accurate and context-aware
-suggestions.
-
-:mag: **Semantic Search** *(Work in Progress)*  
-Enhance the relevance of AI suggestions by providing richer context. Commands
-can pull in data on demand depending on the use case:
-- **Link to Specific Files**: Include content from specific files relative to
-  the .d41rc file.  
-  `"context": ["file://coding-standards.md"]`
-- **Perform Semantic Searches**: Search within sibling folders and attach the
-  top 3 files as context.  
-  `"context": ["semq:3://best practice examples of Jest tests"`
-
-:books: **Retrieval-Augmented Generation (RAG) with
-[DevDocs](https://github.com/freeCodeCamp/devdocs/tree/main)** *(Work in
-Progress)*  
-Integrate [devdocs.io](https://devdocs.io/), which combines multiple API
-documentations into a fast, organized, and searchable interface. By
-incorporating DevDocs, you can perform semantic searches over documentation and
-inject relevant snippets directly into your AI prompts. This reduces
-hallucinations and ensures the AI provides up-to-date and accurate information.
-
-Example:
-
-- **TechDocsTool**: A `tool` that accepts parameters like technology name,
-  version, and query to perform semantic searches in documentation and return
-  relevant information.
-
-:art: **UI/UX/DX**  
-Aiming for minimalism. Fewer shortcuts and configurations are better. Mnemonics
-are helpful, and *just-in-time* is preferred over *all-the-time*. Buffers are
-the canvas, and while creating a conversational UI inside the editor is
-possible, it might miss the essence of seamless integration.
 
 ## Installation
 
 ### Minimal Configuration
 
-To get started with `deckr41/nvim`, you need to have either the `OPENAI_API_KEY`
-or `ANTHROPIC_API_KEY` environment variables set. If both are available, the
-plugin will default to using Anthropic.
+To get started, you need either `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+environment variables set. If both are set, Anthropic is used.
 
-**Default Backends**:
-
-- **OpenAI**: Uses `gpt-4o-mini` as the default model.
-- **Anthropic**: Uses `claude-3-5-sonnet-20240620` as the default model.
-
-**Example using `lazy.nvim`**:
+**Example for `lazy.nvim`**:
 
 ```lua
 {
   "deckr41/nvim",
+  event = { "BufEnter" },
+  opts = {}
   dependencies = {
     "nvim-lua/plenary.nvim",
     "nvim-telescope/telescope.nvim",
@@ -108,108 +74,85 @@ plugin will default to using Anthropic.
 
 ### Full Configuration Options
 
-You can customize the plugin by providing additional options. Below is the
-default configuration with all available settings:
+Below is the default configuration with all available settings:
 
 ```lua
-{
-  "deckr41/nvim",
-  opts = {
-    -- Mode configuration
-    mode = {
-      -- Choose between "easy-does-it" and "r-for-rocket"
-      type = "easy-does-it",
+opts = {
+  -- Mode configuration
+  mode = {
+    -- Choose between "easy-does-it" and "r-for-rocket"
+    type = "easy-does-it",
 
-      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
-      timeout = 1000,
-    },
-
-    -- Backend configurations
-    backends = {
-      openai = {
-        url = "https://api.openai.com/v1/chat/completions",
-        api_key = os.getenv("OPENAI_API_KEY"),
-        default_model = "gpt-4o-mini",
-        available_models = {
-          ["gpt-4o"] = { max_tokens = 4096 },
-          ["gpt-4o-2024-08-06"] = { max_tokens = 16384 },
-          ["gpt-4o-mini"] = { max_tokens = 16384 },
-        },
-        temperature = 0.2,
-      },
-      anthropic = {
-        url = "https://api.anthropic.com/v1/messages",
-        api_key = os.getenv("ANTHROPIC_API_KEY"),
-        default_model = "claude-3-5-sonnet-20240620",
-        available_models = {
-          ["claude-3-5-sonnet-20240620"] = { max_tokens = 1024 },
-        },
-        temperature = 0.2,
-      },
-    },
-
-    -- If not specified, the auto-detect backed is used. 
-    -- If both are active, Anthropic is used.
-    active_backend = nil,
-
-    -- If not specified, the backend's `default_model` is used.
-    active_model = nil, 
-
-    -- Command triggered by pressing `<S-Right>` once.
-    default_command = "finish-line",
-
-    -- Command triggered by pressing `<S-Right>` twice quickly.
-    default_double_command = "finish-block",
+    -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
+    timeout = 1000,
   },
-  dependencies = {
-    "nvim-lua/plenary.nvim",
-    "nvim-telescope/telescope.nvim",
+
+  -- Backend configurations
+  backends = {
+    openai = {
+      url = "https://api.openai.com/v1/chat/completions",
+      api_key = os.getenv("OPENAI_API_KEY"),
+      default_model = "gpt-4o-mini",
+      available_models = {
+        ["gpt-4o"] = { max_tokens = 4096 },
+        ["gpt-4o-2024-08-06"] = { max_tokens = 16384 },
+        ["gpt-4o-mini"] = { max_tokens = 16384 },
+      },
+      temperature = 0.2,
+    },
+    anthropic = {
+      url = "https://api.anthropic.com/v1/messages",
+      api_key = os.getenv("ANTHROPIC_API_KEY"),
+      default_model = "claude-3-5-sonnet-20240620",
+      available_models = {
+        ["claude-3-5-sonnet-20240620"] = { max_tokens = 1024 },
+      },
+      temperature = 0.2,
+    },
   },
+
+  -- If not specified, the auto-detect backed is used. 
+  -- If both are active, Anthropic is used.
+  active_backend = nil,
+
+  -- If not specified, the backend's `default_model` is used.
+  active_model = nil, 
+
+  -- Command triggered by pressing `<S-Right>` once.
+  default_command = "finish-line",
+
+  -- Command triggered by pressing `<S-Right>` twice quickly.
+  default_double_command = "finish-block",
 }
 ```
 
 ### Setting Up API Keys
 
-Ensure you have set the necessary environment variables:
+Add keys to your shell profile file (`.bashrc`, `.zshrc`, etc.):
 
-- For **OpenAI**: `OPENAI_API_KEY`
-- For **Anthropic**: `ANTHROPIC_API_KEY`
-
-Add them to your shell's profile file (`.bashrc`, `.zshrc`, etc.):
-
-```bash
+```sh
 export OPENAI_API_KEY="your-openai-api-key"
 export ANTHROPIC_API_KEY="your-anthropic-api-key"
 ```
-
-> [!NOTE] 
-> Integration with password managers is somewhere in the backlog. 
 
 ## Usage
 
 ### Modes
 
-The plugin offers two modes to cater to different coding styles:
+- `easy-does-it`: Suggestions on demand with `<S-Right>`.
+- `r-for-rocket`: Real-time suggestions with adjustable debounce.
 
-- `easy-does-it`  
-This is the default mode. Trigger suggestions on demand by pressing
-`<Shift-RightArrow>`. Ideal for developers who prefer focused coding and seek
-AI assistance only when needed. Helps prevent over-reliance on AI and maintains
-coding flow.
-- `r-for-rocket`  
-Suggestions are triggered automatically as you type, debounced with a
-configurable timeout (default is 1000ms). This mode provides continuous AI
-assistance, akin to having an AI co-pilot. Useful for those who prefer
-real-time suggestions.
-
-You can switch between modes by setting the type in the mode configuration:
+Switch modes with:
 
 ```lua
 opts = {
   mode = {
     type = "r-for-rocket",
-    -- Adjust the debounce timeout as needed
     timeout = 1000,
+  }
+  -- or
+  {
+    type = "easy-does-it",
   }
 }
 ```
@@ -218,46 +161,83 @@ opts = {
 
 **INSERT** mode:
 
-- **`<Shift-RightArrow>`**: Trigger the default command (`finish-line`) or
-  accept the current suggestion.
-  - Pressing `<S-Right>` once will trigger the `finish-line` command.
-  - Pressing `<S-Right>` twice quickly will trigger the `finish-block` command.
-- **`<Tab>`**, **`<CR>`** or **`<S-Right>`** with a suggestion available:
-  Accept the suggestion and insert it into the buffer.
-- **`<Escape>`**: Dismiss the current suggestion without inserting.
+- `<S-Right>`: Trigger or accept suggestions.
+  - Press `<S-Right>` once will trigger the `finish-line` command.
+  - Press `<S-Right>` twice quickly will trigger the `finish-block` command.
+- `<Tab>`, `<Enter>`, `<S-Right>`: Accept suggestion.
+- `<Escape>`: Dismiss suggestion.
 
-> [!NOTE]
-> Currently, only **INSERT** mode is supported. Running commands in **VISUAL**
-> and **NORMAL** mode will be implemented soon.
+**VISUAL** mode: *(Work in Progress)*
+
+**NORMAL** mode: *(Work in Progress)*
 
 ### Commands
 
 - **`:D41Eject`**: Ejects the default `.d41rc` file into your current working
   directory for customization.
 
+## Understanding `.d41rc`
+
+`.d41rc` files configure AI behavior and commands per project. Multiple files
+can coexist, allowing flexible customization.
+
+- Commands are loaded from `.d41rc` files up the
+  directory tree, stopping at the first file with
+  `"root": true`. *(Work in Progress)*
+- Commands merge top-down, so closer `.d41rc` files
+  can override those above, with deep merging for
+  selective changes, for example allowing the
+  addition of certain context files to an existing
+  command. *(Work in Progress)*
+
+### Structure and Commands
+
+Each `.d41rc` is a JSON object containing commands:
+
+```json
+{
+  "$schema": ".d41rc-schema.json",
+  "commands": [
+    {
+      "id": "zen-one-shot",
+      "system_prompt": [
+        "You are a Zen master named Zero, the master of one-liners.",
+        "You will respond similar to how a Zen master would, in koans, short and succinct riddles, analogies or metaphors.",
+        "Now. Take a deep breath. Each word written unfolds the answer."
+      ],
+      "prompt": [
+        "${FULL_TEXT}"
+      ],
+      "temperature": 0.7,
+      "max_tokens": 100
+    }
+  ]
+}
+```
+
+Refer to the schema definition [here](.d41rc-schema.json).
+
+### Variable Interpolation
+
+The `system_prompt` and `prompt` fields support dynamic variable interpolation:
+
+- **`${FILE_SYNTAX}`**: Current file's language.
+- **`${LINES_BEFORE_CURRENT}`**: Code before the line.
+- **`${TEXT_BEFORE_CURSOR}`**: Text before cursor.
+- **`${LINES_AFTER_CURRENT}`**: Code after the line.
+- **`${FULL_TEXT}`**: Entire document.
+
 ## Development
 
 ### Code overview
 
 The plugin's architecture is modular, with each component responsible for a
-specific functionality:
+clear, isolated domain of functionality.
 
 ![Plugin code overview diagram](docs/code-overview.svg)
 
 ## Credits
 
-- [llm.nvim](https://github.com/melbaldove/llm.nvim) - Provided inspiration for
-  simple and effective implementation.
-- [ell](https://github.com/MadcowD/ell) - Highlighted the importance of
-  treating prompts as algorithms that require iteration and debugging (intro by
-  [Ian Wootten](https://www.youtube.com/watch?v=IQI5BZlVI3Y)).
+- Inspired by [llm.nvim](https://github.com/melbaldove/llm.nvim) and
+  [ell](https://github.com/MadcowD/ell).
 
-## Related Plugins
-
-- [ChatGPT.nvim](https://github.com/jackMort/ChatGPT.nvim) - Effortless Natural
-  Language Generation with OpenAI's ChatGPT API 
-- [avante.nvim](https://github.com/yetone/avante.nvim) - Use your Neovim like
-  using Cursor AI IDE! 
-- [codecompanion.nvim](https://github.com/olimorris/codecompanion.nvim) -
-  AI-powered coding, seamlessly in Neovim. Supports Anthropic, Copilot, Gemini,
-  Ollama and OpenAI LLMs 
