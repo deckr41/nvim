@@ -61,6 +61,7 @@ local run_command = function(command_id)
   local context = {
     FILE_PATH = WindowUtils.get_path(),
     FILE_SYNTAX = WindowUtils.get_syntax(),
+    FILE_CONTENT = WindowUtils.get_file_content(),
     LINES_BEFORE_CURRENT = table.concat(lines_before, "\n"),
     TEXT_BEFORE_CURSOR = string.sub(current_line, 1, cursor_col),
     LINES_AFTER_CURRENT = table.concat(lines_after, "\n"),

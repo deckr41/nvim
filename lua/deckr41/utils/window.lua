@@ -111,4 +111,15 @@ M.get_text = function(opts)
   return table.concat(lines, "\n")
 end
 
+--- @param opts ?{ window_id?: integer }
+--- @return string
+M.get_file_content = function(opts)
+  opts = opts or {}
+  local window_id = opts.window_id or VimAPI.nvim_get_current_win()
+  local buffer_id = vim.api.nvim_win_get_buf(window_id)
+  local lines = vim.api.nvim_buf_get_lines(buffer_id, 0, -1, false)
+
+  return table.concat(lines, "\n")
+end
+
 return M
