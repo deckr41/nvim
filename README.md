@@ -184,14 +184,11 @@ opts = {
 `.d41rc` files configure AI behavior and commands per project. Multiple files
 can coexist, allowing flexible customization.
 
-- Commands are loaded from `.d41rc` files up the
-  directory tree, stopping at the first file with
-  `"root": true`. *(Work in Progress)*
-- Commands merge top-down, so closer `.d41rc` files
-  can override those above, with deep merging for
-  selective changes, for example allowing the
-  addition of certain context files to an existing
-  command. *(Work in Progress)*
+- Commands are loaded from `.d41rc` files up the directory tree, stopping at
+  the first file with `"root": true`. *(Work in Progress)*
+- Commands merge top-down, so closer `.d41rc` files can override those above,
+  with deep merging for selective changes, for example allowing the addition of
+  certain context files to an existing command. *(Work in Progress)*
 
 ### Structure and Commands
 
@@ -224,20 +221,21 @@ Refer to the schema definition [here](.d41rc-schema.json).
 
 The `system_prompt` and `prompt` fields support dynamic variable interpolation:
 
+- **`${FILE_PATH}`**: Current file path.
 - **`${FILE_SYNTAX}`**: Current file's language.
+- **`${FILE_CONTENT}`**: Entire document.
 - **`${LINES_BEFORE_CURRENT}`**: Code before the line.
 - **`${TEXT_BEFORE_CURSOR}`**: Text before cursor.
 - **`${LINES_AFTER_CURRENT}`**: Code after the line.
-- **`${FULL_TEXT}`**: Entire document.
 
 ## Development
 
 ### Code overview
 
 The plugin's architecture is modular, with each component responsible for a
-clear, isolated domain of functionality.
+clear, isolated piece of domain.
 
-![Plugin code overview diagram](docs/code-overview.svg)
+![Plugin code overview diagram](docs/code-overview.png)
 
 ## Credits
 
