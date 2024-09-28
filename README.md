@@ -42,8 +42,8 @@ Progress)*
     * [Full Configuration Options](#full-configuration-options)
     * [Setting Up API Keys](#setting-up-api-keys)
 * [Usage](#usage)
-    * [Modes](#modes)
     * [Default Keybindings](#default-keybindings)
+    * [Modes](#modes)
     * [Commands](#commands)
 * [Understanding `.d41rc`](#understanding-d41rc)
     * [Structure and Commands](#structure-and-commands)
@@ -58,7 +58,7 @@ Progress)*
 
 ### Minimal Configuration
 
-To get started, you need either `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+To get started, you just need `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 environment variables set. If both are set, Anthropic is used.
 
 **Example for `lazy.nvim`**:
@@ -140,6 +140,20 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 ## Usage
 
+### Default Keybindings
+
+**INSERT** mode:
+
+- `<S-Right>`: Trigger or accept suggestions.
+  - Press `<S-Right>` once will trigger the `finish-line` command.
+  - Press `<S-Right>` twice quickly will trigger the `finish-block` command.
+- `<Tab>`, `<Enter>`, `<S-Right>`: Accept suggestion.
+- `<Escape>`: Dismiss suggestion.
+
+**VISUAL** mode: *(Work in Progress)*
+
+**NORMAL** mode: *(Work in Progress)*
+
 ### Modes
 
 - `easy-does-it`: Suggestions on demand with `<S-Right>`.
@@ -159,20 +173,6 @@ opts = {
   }
 }
 ```
-
-### Default Keybindings
-
-**INSERT** mode:
-
-- `<S-Right>`: Trigger or accept suggestions.
-  - Press `<S-Right>` once will trigger the `finish-line` command.
-  - Press `<S-Right>` twice quickly will trigger the `finish-block` command.
-- `<Tab>`, `<Enter>`, `<S-Right>`: Accept suggestion.
-- `<Escape>`: Dismiss suggestion.
-
-**VISUAL** mode: *(Work in Progress)*
-
-**NORMAL** mode: *(Work in Progress)*
 
 ### Commands
 
