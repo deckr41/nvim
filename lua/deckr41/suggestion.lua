@@ -194,7 +194,7 @@ function M:show()
 end
 
 --- Resets the suggestion state and closes the window.
-function M:reset()
+function M:reset_and_close()
   if self.win_id and VimAPI.nvim_win_is_valid(self.win_id) then
     VimAPI.nvim_win_close(self.win_id, true)
     self.win_id = nil
@@ -205,6 +205,7 @@ function M:reset()
     self.buf_id = nil
   end
 
+  self.is_loading = false
   self.is_visible = false
   self.text = ""
 end
@@ -220,7 +221,7 @@ function M:apply()
     should_clear_ahead = true,
   })
 
-  self:reset()
+  self:reset_and_close()
 end
 
 return M

@@ -156,12 +156,7 @@ local setup_keymaps = function()
         Suggestion:apply()
       end
     end,
-    ["<CR>"] = function()
-      if Suggestion:is_finished() and Suggestion.text ~= "" then
-        Suggestion:apply()
-      end
-    end,
-    ["<Escape>"] = function() Suggestion:reset() end,
+    ["<Escape>"] = function() Suggestion:reset_and_close() end,
   }
 
   for key, callback in pairs(keybinds) do
@@ -186,19 +181,18 @@ end
 
 --- Setup autocommands based on the mode
 local setup_autocmds = function()
-  -- Close the Suggestion box and stop the current command if running
-  -- when moving the cursor
   local augroup =
     VimAPI.nvim_create_augroup("CursorMovedGroup", { clear = true })
 
+  -- When moving the cursor, stop the running command and reset the Suggestion box
   VimAPI.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
     group = augroup,
     callback = function()
       if M.state.running_command_job then
         M.state.running_command_job:shutdown(41)
         M.state.running_command_job = nil
+        Suggestion:reset_and_close()
       end
-      if Suggestion.is_visible then Suggestion:reset() end
     end,
   })
 
