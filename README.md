@@ -31,7 +31,8 @@
 :books: **Retrieval-Augmented Generation (RAG) with
 [DevDocs](https://github.com/freeCodeCamp/devdocs/tree/main)** *(Work in
 Progress)*  
-- Integrate with [devdocs.io](https://devdocs.io/) for accurate, context-rich AI responses.
+- Integrate with [devdocs.io](https://devdocs.io/) for accurate, context-rich
+  AI responses.
 
 ## Table of contents
 
@@ -39,11 +40,11 @@ Progress)*
 
 * [Installation](#installation)
     * [Minimal Configuration](#minimal-configuration)
+    * [Modes](#modes)
     * [Full Configuration Options](#full-configuration-options)
     * [Setting Up API Keys](#setting-up-api-keys)
 * [Usage](#usage)
     * [Default Keybindings](#default-keybindings)
-    * [Modes](#modes)
     * [Commands](#commands)
 * [Understanding `.d41rc`](#understanding-d41rc)
     * [Structure and Commands](#structure-and-commands)
@@ -75,22 +76,46 @@ environment variables set. If both are set, Anthropic is used.
 }
 ```
 
+### Modes
+
+- **`easy-does-it`** - Suggestions on demand with `<S-Right>`:
+    - Pressing once will run the [`finish-line`](.d41rc#L5) command
+    - Twice will run [`finish-block`](.d41rc#L38)
+- **`r-for-rocket`** - Real-time suggestions with 1000ms debounce in INSERT
+  mode. 
+
+See `modes` key in configuration for setup.
+
 ### Full Configuration Options
 
 Below is the default configuration with all available settings:
 
 ```lua
 opts = {
+  --
   -- Mode configuration
-  mode = {
-    -- Choose between "easy-does-it" and "r-for-rocket"
-    type = "easy-does-it",
+  --
+  modes = {
+    ["easy-does-it"] = {
+      -- Command triggered by pressing `<S-Right>` once.
+      command = "finish-line",
 
-    -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
-    timeout = 1000,
+      -- Command triggered by pressing `2x<S-Right>` quickly.
+      double_command = "finish-block",
+    },
+    ["r-for-rocket"] = {
+      -- Command triggered when entering or writing in INSERT mode
+      command = "finish_block",
+
+      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
+      timeout = 1000,
+    },
   },
+  active_mode = "easy-does-it",
 
+  --
   -- Backend configurations
+  --
   backends = {
     openai = {
       url = "https://api.openai.com/v1/chat/completions",
@@ -120,12 +145,6 @@ opts = {
 
   -- If not specified, the backend's `default_model` is used.
   active_model = nil, 
-
-  -- Command triggered by pressing `<S-Right>` once.
-  default_command = "finish-line",
-
-  -- Command triggered by pressing `<S-Right>` twice quickly.
-  default_double_command = "finish-block",
 }
 ```
 
@@ -144,35 +163,15 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 **INSERT** mode:
 
-- `<S-Right>`: Trigger or accept suggestions.
+- `<S-Right>`: Trigger suggestions.
   - Press `<S-Right>` once will trigger the `finish-line` command.
   - Press `<S-Right>` twice quickly will trigger the `finish-block` command.
-- `<Tab>`, `<Enter>`, `<S-Right>`: Accept suggestion.
+- `<Tab>`, `<S-Right>`: Accept suggestion.
 - `<Escape>`: Dismiss suggestion.
 
 **VISUAL** mode: *(Work in Progress)*
 
 **NORMAL** mode: *(Work in Progress)*
-
-### Modes
-
-- `easy-does-it`: Suggestions on demand with `<S-Right>`.
-- `r-for-rocket`: Real-time suggestions with adjustable debounce.
-
-Switch modes with:
-
-```lua
-opts = {
-  mode = {
-    type = "r-for-rocket",
-    timeout = 1000,
-  }
-  -- or
-  {
-    type = "easy-does-it",
-  }
-}
-```
 
 ### Commands
 

@@ -10,13 +10,20 @@ local Backend = require("deckr41.backend") --- @type BackendModule
 local Commands = require("deckr41.commands") --- @type CommandsModule
 local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
 
+--- @class ConfigModeEasyDoesIt
+--- @field command string
+--- @field double_command string
+
+--- @class ConfigModeRForRocket
+--- @field timeout integer
+--- @field command string
+
 --- @class ConfigModule
 --- @field backends ?table<BackendServiceNames, BackendService>
 --- @field active_backend ?BackendServiceNames
 --- @field active_model ?string
---- @field default_command string
---- @field default_double_command string
---- @field mode { type: "easy-does-it"|"r-for-rocket", timeout: integer }
+--- @field active_mode string
+--- @field modes { ["easy-does-it"]: ConfigModeEasyDoesIt, ["r-for-rocket"]: ConfigModeRForRocket }
 
 --- @class Deckr41PluginState
 --- @field running_command_job ?Job
@@ -28,13 +35,18 @@ local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
 local M = {
   config = {
     -- backends = nil,
-    -- active_backend = nil,
+    -- active_backend = "anthropic",
     -- active_model = nil,
-    default_command = "finish-line",
-    default_double_command = "finish-block",
-    mode = {
-      type = "easy-does-it",
-      timeout = 1000,
+    active_mode = "easy-does-it",
+    modes = {
+      ["easy-does-it"] = {
+        command = "finish-line",
+        double_command = "finish-block",
+      },
+      ["r-for-rocket"] = {
+        command = "finish-block",
+        timeout = 1000,
+      },
     },
   },
   state = {
@@ -113,29 +125,32 @@ end
 
 --- Setup key mappings based on the mode
 local setup_keymaps = function()
-  if M.config.mode.type == "easy-does-it" then
-    -- In 'easy-does-it' mode, use Shift+RightArrow to trigger suggestions
-    VimAPI.nvim_set_keymap("i", "<S-Right>", "", {
-      noremap = true,
-      silent = true,
-      callback = function()
-        if Suggestion:is_finished() then
-          Suggestion:apply()
-        elseif not Suggestion.is_loading then
-          M.state.shift_arrow_right_count = M.state.shift_arrow_right_count + 1
+  local mode = M.config.modes[M.config.active_mode]
 
-          vim.defer_fn(function()
-            if M.state.shift_arrow_right_count == 1 then
-              run_command(M.config.default_command)
-            elseif M.state.shift_arrow_right_count == 2 then
-              run_command(M.config.default_double_command)
-            end
-            M.state.shift_arrow_right_count = 0
-          end, 200)
-        end
-      end,
-    })
-  end
+  -- In 'easy-does-it' mode, use Shift+RightArrow to trigger suggestions
+  VimAPI.nvim_set_keymap("i", "<S-Right>", "", {
+    noremap = true,
+    silent = true,
+    callback = function()
+      if Suggestion:is_finished() then
+        Suggestion:apply()
+      elseif not Suggestion.is_loading then
+        M.state.shift_arrow_right_count = M.state.shift_arrow_right_count + 1
+
+        vim.defer_fn(function()
+          if M.state.shift_arrow_right_count == 1 then
+            run_command(mode.command)
+          elseif
+            M.config.active_mode == "easy-does-it"
+            and M.state.shift_arrow_right_count == 2
+          then
+            run_command(mode.double_command)
+          end
+          M.state.shift_arrow_right_count = 0
+        end, 200)
+      end
+    end,
+  })
 
   -- Keybindings that work when the suggestion box is visible
   local keybinds = {
@@ -184,14 +199,15 @@ local setup_autocmds = function()
     end,
   })
 
-  if M.config.mode.type == "r-for-rocket" then
+  local mode = M.config.modes[M.config.active_mode]
+  if M.config.active_mode == "r-for-rocket" then
     -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
-    local debounce_time = M.config.mode.timeout or 500
+    local debounce_time = mode.timeout or 1000
 
     -- Debounced function to run the default command
     local debounced_run_command = FnUtils.debounce(function()
       if not Suggestion.is_loading and not Suggestion.is_visible then
-        run_command(M.config.default_command)
+        run_command(mode.command)
       end
     end, { reset_duration = debounce_time })
 
