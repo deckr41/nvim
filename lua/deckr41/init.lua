@@ -48,17 +48,17 @@ local M = {
 
 ---@param command_id string
 local run_command = function(command_id)
-  -- local window_id = VimAPI.nvim_get_current_win()
   local command = Commands:get_command_by_id(command_id)
   if not command then
-    Logger.error("Default command '" .. command_id .. "' not found")
+    Logger.error("Command not found", { id = command_id })
     return
   end
 
   local cursor_row, cursor_col = WindowUtils.get_cursor_position()
   local lines_before, current_line, lines_after =
     WindowUtils.get_lines_split_by_current()
-  local interpolated_prompt = StringUtils.interpolate(command.prompt, {
+
+  local context = {
     FILE_PATH = WindowUtils.get_path(),
     FILE_SYNTAX = WindowUtils.get_syntax(),
     LINES_BEFORE_CURRENT = table.concat(lines_before, "\n"),
@@ -66,31 +66,19 @@ local run_command = function(command_id)
     LINES_AFTER_CURRENT = table.concat(lines_after, "\n"),
     CURSOR_ROW = cursor_row,
     CURSOR_COL = cursor_col,
-  })
-
-  local interpolated_system_prompt = command.system_prompt
-  if interpolated_system_prompt then
-    interpolated_system_prompt =
-      StringUtils.interpolate(interpolated_system_prompt, {
-        FILE_PATH = WindowUtils.get_path(),
-        FILE_SYNTAX = WindowUtils.get_syntax(),
-        LINES_BEFORE_CURRENT = table.concat(lines_before, "\n"),
-        TEXT_BEFORE_CURSOR = string.sub(current_line, 1, cursor_col),
-        LINES_AFTER_CURRENT = table.concat(lines_after, "\n"),
-        CURSOR_ROW = cursor_row,
-        CURSOR_COL = cursor_col,
-      })
-  end
+  }
 
   M.state.running_command_job = Backend:ask(M.config.active_backend, {
     model = M.config.active_model,
-    system_prompt = interpolated_system_prompt,
+    system_prompt = command.system_prompt
+        and StringUtils.interpolate(command.system_prompt, context)
+      or nil,
     max_tokens = command.max_tokens,
     temperature = command.temperature,
     messages = {
       {
         role = "user",
-        content = interpolated_prompt,
+        content = StringUtils.interpolate(command.prompt, context),
       },
     },
     on_start = function(config)
@@ -242,16 +230,15 @@ local setup_autocmds = function()
 end
 
 --- Configure available backends
---- @param ?backend_configs table<string, Backend>
+--- @param backend_configs ?table<string, BackendService>
 local setup_backends = function(backend_configs)
   if not backend_configs then return end
 
   for backend_name, backend_config in pairs(backend_configs) do
     if not Backend:is_backend_supported(backend_name) then
       Logger.error(
-        "Invalid backend '"
-          .. backend_name
-          .. "'. Accepted values are 'openai' and 'anthropic'."
+        "Invalid backend, accepted values are 'openai' and 'anthropic'.",
+        { name = backend_name }
       )
     else
       if not M.config.active_backend then
