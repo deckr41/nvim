@@ -83,13 +83,8 @@ local run_command = function(command_id)
       },
     },
     on_start = function(config)
-      Suggestion.meta.right = string.format(
-        "%s / %s / %s / t: %s ",
-        command_id,
-        config.backend_name or "?",
-        config.model or "?",
-        config.temperature or "?"
-      )
+      Suggestion.meta.bar_right =
+        string.format("%s / %s ", command_id, config.model or "?")
       Suggestion:start_loading()
       Suggestion:show()
     end,

@@ -9,7 +9,7 @@ local VimAPI = vim.api
 --- @field win_id integer | nil
 --- @field buf_id integer | nil
 --- @field max_width number Max width of the suggestion window, default is 80
---- @field meta { left: string, right: string }
+--- @field meta { bar_left: string, bar_right: string }
 local M = {
   text = "",
   is_visible = false,
@@ -23,8 +23,8 @@ local M = {
 
   max_width = 80,
   meta = {
-    left = "${STATUS}",
-    right = "",
+    bar_left = "${STATUS}",
+    bar_right = "",
   },
 }
 
@@ -36,7 +36,7 @@ local build_meta_bar = function(self)
   local status = self.is_loading and (self.text == "" and "asking" or "writing")
     or "done"
 
-  local meta_left = StringUtils.interpolate(self.meta.left, {
+  local meta_left = StringUtils.interpolate(self.meta.bar_left, {
     STATUS = string.format(
       " %s %s",
       status_icons[status],
@@ -51,7 +51,7 @@ local build_meta_bar = function(self)
       .. "s"
   end
 
-  local meta_right = self.meta.right
+  local meta_right = self.meta.bar_right
   local line = "%#deckr41Left#"
     .. meta_left
     .. " %=%#deckr41Right# "
