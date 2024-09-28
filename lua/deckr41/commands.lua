@@ -2,6 +2,7 @@ local ArrayUtils = require("deckr41.utils.array") --- @class ArrayUtils
 local FSUtils = require("deckr41.utils.fs") --- @class FSUtils
 local FnUtils = require("deckr41.utils.fn") --- @class FnUtils
 local Logger = require("deckr41.utils.logger") --- @class Logger
+local WindowUtils = require("deckr41.utils.window") --- @class WindowUtils
 
 --- @class RCFileCommand
 --- @field id string
@@ -114,6 +115,25 @@ function M:load_all()
     load_one(rc_file)
     watch_and_reload_one(rc_file)
   end
+end
+
+--- Return all the variables supported by command prompt interpolation
+--- @return table
+function M:gather_context()
+  local cursor_row, cursor_col = vim.api.nvim_win_get_cursor(0)
+  local lines_before, current_line, lines_after =
+    WindowUtils.get_lines_split_by_current()
+
+  return {
+    FILE_PATH = WindowUtils.get_path(),
+    FILE_SYNTAX = WindowUtils.get_syntax(),
+    FILE_CONTENT = WindowUtils.get_file_content(),
+    LINES_BEFORE_CURRENT = table.concat(lines_before, "\n"),
+    TEXT_BEFORE_CURSOR = string.sub(current_line, 1, cursor_col),
+    LINES_AFTER_CURRENT = table.concat(lines_after, "\n"),
+    CURSOR_ROW = cursor_row,
+    CURSOR_COL = cursor_col,
+  }
 end
 
 ---

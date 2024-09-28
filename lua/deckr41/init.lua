@@ -3,7 +3,6 @@ local FnUtils = require("deckr41.utils.fn") --- @type FnUtils
 local Logger = require("deckr41.utils.logger") --- @type Logger
 local StringUtils = require("deckr41.utils.string") --- @type StringUtils
 local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
-local WindowUtils = require("deckr41.utils.window") --- @type WindowUtils
 local VimAPI = vim.api
 
 --- Domain imports
@@ -54,32 +53,21 @@ local run_command = function(command_id)
     return
   end
 
-  local cursor_row, cursor_col = WindowUtils.get_cursor_position()
-  local lines_before, current_line, lines_after =
-    WindowUtils.get_lines_split_by_current()
-
-  local context = {
-    FILE_PATH = WindowUtils.get_path(),
-    FILE_SYNTAX = WindowUtils.get_syntax(),
-    FILE_CONTENT = WindowUtils.get_file_content(),
-    LINES_BEFORE_CURRENT = table.concat(lines_before, "\n"),
-    TEXT_BEFORE_CURSOR = string.sub(current_line, 1, cursor_col),
-    LINES_AFTER_CURRENT = table.concat(lines_after, "\n"),
-    CURSOR_ROW = cursor_row,
-    CURSOR_COL = cursor_col,
-  }
+  local context = Commands:gather_context()
+  local prompt = StringUtils.interpolate(command.prompt, context)
+  local system_prompt = command.system_prompt
+      and StringUtils.interpolate(command.system_prompt, context)
+    or nil
 
   M.state.running_command_job = Backend:ask(M.config.active_backend, {
     model = M.config.active_model,
-    system_prompt = command.system_prompt
-        and StringUtils.interpolate(command.system_prompt, context)
-      or nil,
+    system_prompt = system_prompt,
     max_tokens = command.max_tokens,
     temperature = command.temperature,
     messages = {
       {
         role = "user",
-        content = StringUtils.interpolate(command.prompt, context),
+        content = prompt,
       },
     },
     on_start = function(config)
