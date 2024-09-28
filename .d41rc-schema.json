@@ -1,16 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "description": "Configuration file for customizing AI behavior per project.",
   "definitions": {
     "Prompt": {
+      "description": "Prompts can either be strings or array of strings. Variable interpolation is supported using {{variable}} syntax.",
       "oneOf": [
         {
-          "description": "A single string prompt.",
           "type": "string"
         },
         {
           "type": "array",
-          "description": "A multiline prompt. Array items are concatenated by a new line to form the final prompt.",
           "items": {
             "type": "string"
           }
@@ -19,16 +19,14 @@
     }
   },
   "properties": {
-    "system_prompt": {
-      "$ref": "#/definitions/Prompt"
-    },
     "commands": {
       "type": "array",
+      "description": "List of commands available for AI customization.",
       "items": {
         "type": "object",
         "properties": {
           "id": {
-            "description": "A unique command identifier.",
+            "description": "Unique identifier for the command. If id exists in a ",
             "type": "string"
           },
           "system_prompt": {
@@ -38,12 +36,16 @@
             "$ref": "#/definitions/Prompt"
           },
           "temperature": {
-            "description": "The sampling temperature for the command, influencing the randomness/creativity of the output.",
-            "type": "number"
+            "description": "Sampling temperature, controls randomness (0-1). Default 0.7. Higher values increase creativity, lower values increase determinism.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.7
           },
           "max_tokens": {
-            "description": "The maximum number of tokens to be used when responding. The value is capped by the `max_tokens` of the underlying model.",
-            "type": "integer"
+            "description": "Maximum number of tokens for the response. Defaults to the model's maximum if not specified.",
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
