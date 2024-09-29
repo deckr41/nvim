@@ -5,7 +5,7 @@ local M = {}
 --- @generic T: function
 --- @param fn T
 --- @param opts ?{ reset_duration?: integer, has_leading_call?: boolean }
---- @return T
+--- @return T, uv_timer_t
 M.debounce = function(fn, opts)
   opts = opts or {}
   local reset_duration = opts.reset_duration or 200
@@ -24,7 +24,8 @@ M.debounce = function(fn, opts)
 
     timer:stop()
     timer:start(reset_duration, 0, call_original)
-  end
+  end,
+    timer
 end
 
 return M
