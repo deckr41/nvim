@@ -1,5 +1,4 @@
 --- Utilities imports
-local FnUtils = require("deckr41.utils.fn") --- @type FnUtils
 local Logger = require("deckr41.utils.logger") --- @type Logger
 local StringUtils = require("deckr41.utils.string") --- @type StringUtils
 local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
@@ -8,26 +7,18 @@ local VimAPI = vim.api
 --- Domain imports
 local Backend = require("deckr41.backend") --- @type BackendModule
 local Commands = require("deckr41.commands") --- @type CommandsModule
+local Keyboard = require("deckr41.keyboard") --- @type KeyboardModule
 local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
-
---- @class ConfigModeEasyDoesIt
---- @field command string
---- @field double_command string
-
---- @class ConfigModeRForRocket
---- @field timeout integer
---- @field command string
 
 --- @class ConfigModule
 --- @field backends ?table<BackendServiceNames, BackendService>
 --- @field active_backend ?BackendServiceNames
 --- @field active_model ?string
---- @field active_mode string
---- @field modes { ["easy-does-it"]: ConfigModeEasyDoesIt, ["r-for-rocket"]: ConfigModeRForRocket }
+--- @field modes ?KeyboardModes
+--- @field active_mode ?KeyboardModeName
 
 --- @class Deckr41PluginState
 --- @field running_command_job ?Job
---- @field shift_arrow_right_count integer
 
 --- @class Deckr41Plugin
 --- @field config ?ConfigModule
@@ -37,28 +28,17 @@ local M = {
     -- backends = nil,
     -- active_backend = "anthropic",
     -- active_model = nil,
-    active_mode = "easy-does-it",
-    modes = {
-      ["easy-does-it"] = {
-        command = "finish-line",
-        double_command = "finish-block",
-      },
-      ["r-for-rocket"] = {
-        command = "finish-block",
-        timeout = 1000,
-      },
-    },
   },
   state = {
     -- Plenary Job of currently running command
     running_command_job = nil,
-    -- RightArrow press counter since NeoVim cannot bind Shift + ArrowRight + ArrowRight
-    shift_arrow_right_count = 0,
   },
 }
 
 ---@param command_id string
 local run_command = function(command_id)
+  if M.state.running_command_job ~= nil then return end
+
   local command = Commands:get_command_by_id(command_id)
   if not command then
     Logger.error("Command not found", { id = command_id })
@@ -123,106 +103,6 @@ M.select_and_apply_command_or_accept_suggestion = function()
   end
 end
 
---- Setup key mappings based on the mode
-local setup_keymaps = function()
-  local mode = M.config.modes[M.config.active_mode]
-
-  -- In 'easy-does-it' mode, use Shift+RightArrow to trigger suggestions
-  VimAPI.nvim_set_keymap("i", "<S-Right>", "", {
-    noremap = true,
-    silent = true,
-    callback = function()
-      if Suggestion:is_finished() then
-        Suggestion:apply()
-      elseif not Suggestion.is_loading then
-        M.state.shift_arrow_right_count = M.state.shift_arrow_right_count + 1
-
-        vim.defer_fn(function()
-          if M.state.shift_arrow_right_count == 1 then
-            run_command(mode.command)
-          elseif
-            M.config.active_mode == "easy-does-it"
-            and M.state.shift_arrow_right_count == 2
-          then
-            run_command(mode.double_command)
-          end
-          M.state.shift_arrow_right_count = 0
-        end, 200)
-      end
-    end,
-  })
-
-  -- Keybindings that work when the suggestion box is visible
-  local keybinds = {
-    ["<Tab>"] = function()
-      if Suggestion:is_finished() and Suggestion.text ~= "" then
-        Suggestion:apply()
-      end
-    end,
-    ["<Escape>"] = function() Suggestion:reset_and_close() end,
-  }
-
-  for key, callback in pairs(keybinds) do
-    VimAPI.nvim_set_keymap("i", key, "", {
-      noremap = true,
-      silent = true,
-      callback = function()
-        if Suggestion.is_visible then
-          callback()
-        else
-          -- Send the key as normal input
-          VimAPI.nvim_feedkeys(
-            VimAPI.nvim_replace_termcodes(key, true, false, true),
-            "n",
-            true
-          )
-        end
-      end,
-    })
-  end
-end
-
---- Setup autocommands based on the mode
-local setup_autocmds = function()
-  local augroup =
-    VimAPI.nvim_create_augroup("CursorMovedGroup", { clear = true })
-
-  -- When moving the cursor, stop the running command and reset the Suggestion box
-  VimAPI.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-    group = augroup,
-    callback = function()
-      if M.state.running_command_job then
-        M.state.running_command_job:shutdown(41)
-        M.state.running_command_job = nil
-        Suggestion:reset_and_close()
-      end
-    end,
-  })
-
-  local mode = M.config.modes[M.config.active_mode]
-  if M.config.active_mode == "r-for-rocket" then
-    -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
-    local debounce_time = mode.timeout or 1000
-
-    -- Debounced function to run the default command
-    local debounced_run_command = FnUtils.debounce(function()
-      if not Suggestion.is_loading and not Suggestion.is_visible then
-        run_command(mode.command)
-      end
-    end, { reset_duration = debounce_time })
-
-    VimAPI.nvim_create_autocmd("InsertEnter", {
-      group = augroup,
-      callback = function() debounced_run_command() end,
-    })
-
-    VimAPI.nvim_create_autocmd("TextChangedI", {
-      group = augroup,
-      callback = function() debounced_run_command() end,
-    })
-  end
-end
-
 --- Configure available backends
 --- @param backend_configs ?table<string, BackendService>
 local setup_backends = function(backend_configs)
@@ -246,8 +126,8 @@ end
 --- Main plugin entry point
 --- @param opts ?ConfigModule
 M.setup = function(opts)
-  -- Parse user configuration
-  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+  opts = opts or {}
+  M.config = vim.tbl_deep_extend("force", M.config, {}, opts)
 
   setup_backends(M.config.backends)
 
@@ -272,8 +152,23 @@ M.setup = function(opts)
     {}
   )
 
-  setup_keymaps()
-  setup_autocmds()
+  Keyboard.setup({
+    active_mode = opts.active_mode,
+    modes = opts.modes or {},
+    can_accept = function()
+      return Suggestion:is_finished() and Suggestion.text ~= ""
+    end,
+    is_command_running = function() return M.state.running_command_job ~= nil end,
+    on_command = run_command,
+    on_accept = function() Suggestion:apply() end,
+    on_refuse = function()
+      if M.state.running_command_job then
+        M.state.running_command_job:shutdown(41)
+        M.state.running_command_job = nil
+        Suggestion:reset_and_close()
+      end
+    end,
+  })
 end
 
 return M
