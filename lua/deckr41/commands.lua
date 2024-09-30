@@ -47,7 +47,7 @@ local load_one = function(file_path)
   end)
   if not success or not rc_data then
     Logger.error(
-      "Failed to load .rc file",
+      "Failed to load or JSON parse .d41rc file",
       { path = file_path, error = rc_data }
     )
     return
