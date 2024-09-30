@@ -1,25 +1,29 @@
+local Logger = require("deckr41.utils.logger") --- @class Logger
 local TableUtils = require("deckr41.utils.table") --- @class TableUtils
 local curl = require("plenary.curl")
 
---- @alias BackendServiceNames "openai"|"anthropic"
+--- @class BackendModule
+local M = {}
+
+--- @alias BackendServiceName "openai"|"anthropic"
 
 --- @class BackendService
---- @field name string
+--- @field id BackendServiceName
 --- @field url string
 --- @field api_key ?string
 --- @field default_model string
 --- @field available_models table<string, { max_tokens: integer }>
 --- @field temperature number
 
---- @class BackendModule
---- @field openai BackendService
---- @field anthropic BackendService
-local M = {
+--- @alias BackendServices table<BackendServiceName, BackendService>
+
+--- @type BackendServices
+local config = {
   openai = {
-    name = "OpenAI",
+    id = "openai",
     url = "https://api.openai.com/v1/chat/completions",
     api_key = os.getenv("OPENAI_API_KEY"),
-    default_model = "gpt-4o-mini",
+    default_model = "gpt-4o",
     -- https://platform.openai.com/docs/models/gpt-4o
     available_models = {
       -- High-intelligence flagship model for complex, multi-step tasks.
@@ -34,7 +38,7 @@ local M = {
     temperature = 0.2,
   },
   anthropic = {
-    name = "Anthropic",
+    id = "anthropic",
     url = "https://api.anthropic.com/v1/messages",
     api_key = os.getenv("ANTHROPIC_API_KEY"),
     default_model = "claude-3-5-sonnet-20240620",
@@ -45,9 +49,106 @@ local M = {
   },
 }
 
+--- @class BackendState
+--- @field active_backend ?BackendServiceName
+--- @field active_model ?string
+local state = {
+  active_backend = nil,
+  active_model = nil,
+}
+
+--- @class BackendSetupOpts
+--- @field backends ?BackendServices
+--- @field active_backend ?BackendServiceName
+--- @field active_model ?string
+
+--- @param opts BackendSetupOpts
+M.setup = function(opts)
+  config = vim.tbl_deep_extend("force", config, opts.backends or {})
+  state.active_backend = opts.active_backend
+  state.active_model = opts.active_model
+
+  -- Deep merge user defined config for each backend
+  for backend_name, backend_config in pairs(opts.backends or {}) do
+    if not config[backend_name] then
+      Logger.error(
+        "Invalid backend, accepted values are 'openai' and 'anthropic'.",
+        { name = backend_name }
+      )
+      return
+    end
+    if not state.active_backend then state.active_backend = backend_name end
+
+    config[backend_name] =
+      vim.tbl_deep_extend("force", config[backend_name], backend_config)
+  end
+
+  -- If user did not set the active backend, try to autodetect
+  if not state.active_backend then
+    local env_to_backend = {
+      { env_key = "ANTHROPIC_API_KEY", backend_name = "anthropic" },
+      { env_key = "OPENAI_API_KEY", backend_name = "openai" },
+    }
+
+    for _, item in ipairs(env_to_backend) do
+      if not state.active_backend and os.getenv(item.env_key) then
+        state.active_backend = item.backend_name
+      end
+    end
+
+    if not state.active_backend then
+      Logger.error(
+        "Backend not set. Please configure a backend or provide API keys for OpenAI or Anthropic."
+      )
+      return
+    end
+  end
+
+  -- Check if backend is usable by checing it's API key
+  if not config[state.active_backend].api_key then
+    Logger.error(
+      "API key not set for backend. Please set the API key in your configuration or as an environment variable.",
+      { backend = state.active_backend }
+    )
+    return
+  end
+
+  -- If user did not set the active model, use backend's default model
+  if not state.active_model then
+    state.active_model = config[state.active_backend].default_model
+  end
+
+  -- Check if model is supported by the active backend
+  if not config[state.active_backend].available_models[state.active_model] then
+    Logger.error(
+      "Model not supported by backend. Please choose a valid model.",
+      {
+        backend = state.active_backend,
+        model = state.active_model or "nil",
+        supported_models = vim.tbl_keys(
+          config[state.active_backend].available_models
+        ),
+      }
+    )
+    return
+  end
+
+  Logger.debug("Backend successfully initialized", {
+    active_backend = state.active_backend,
+    active_model = state.active_model,
+  })
+end
+
+--- @class PrepareOpenAIOpts
+--- @field model string
+--- @field system_prompt string
+--- @field messages { role: string, content: string }[]
+--- @field temperature number
+--- @field max_tokens integer
+
 -- Prepare request payload OpenAI request
 ---@param backend BackendService
----@param opts BackendAskOpts
+---@param opts PrepareOpenAIOpts
 ---@return string
 ---@return table
 ---@return table
@@ -71,9 +172,16 @@ local prepare_openai_request = function(backend, opts)
   return backend.url, headers, body
 end
 
+--- @class PrepareAnthropicOpts
+--- @field model string
+--- @field system_prompt string
+--- @field messages { role: string, content: string }[]
+--- @field temperature number
+--- @field max_tokens integer
+
 -- Prepare request payload Anthropic request
 ---@param backend BackendService
----@param opts BackendAskOpts
+---@param opts PrepareAnthropicOpts
 ---@return string
 ---@return table
 ---@return table
@@ -100,48 +208,50 @@ end
 --- @field max_tokens ?integer
 --- @field temperature ?number
 --- @field system_prompt ?string
---- @field model string
 --- @field messages { role: string, content: string }[]
 --- @field on_start ?fun(config: { backend_name: string, model: string, temperature: number }): nil
 --- @field on_data ?fun(chunk: string): nil
 --- @field on_done ?fun(response: string, http_status: number): nil
 --- @field on_error ?fun(response: { message: string, stderr: string, exit?: number}): nil
 
---- @param self BackendModule
---- @param name BackendServiceNames
---- @param opts BackendAskOpts
+--- @class PrepareRequestOpts
+--- @field backend BackendService
+--- @field model_name string
+--- @field max_tokens ?integer
+--- @field temperature ?number
+--- @field system_prompt ?string
+--- @field messages { role: string, content: string }[]
+
+--- @param opts PrepareRequestOpts
 --- @return string url
 --- @return table headers
 --- @return table body
-local prepare_request = function(self, name, opts)
-  local backend = self[name]
-  local model_name = opts.model or backend.default_model
-  local model = backend.available_models[model_name]
+local prepare_request = function(opts)
+  local backend = opts.backend
+  local model = backend.available_models[opts.model_name]
   local temperature = opts.temperature or backend.temperature
   local max_tokens = math.min(opts.max_tokens or math.huge, model.max_tokens)
 
-  if name == "openai" then
+  if backend.id == "openai" then
     return prepare_openai_request(backend, {
+      model = opts.model_name,
       system_prompt = opts.system_prompt or "",
       messages = opts.messages,
-      model = model_name,
       temperature = temperature,
       max_tokens = max_tokens,
     })
-  elseif name == "anthropic" then
-    return prepare_anthropic_request(backend, {
-      system_prompt = opts.system_prompt or "",
-      messages = opts.messages,
-      model = model_name,
-      temperature = temperature,
-      max_tokens = max_tokens,
-    })
-  else
-    error("Unsupported backend: " .. name)
   end
+
+  return prepare_anthropic_request(backend, {
+    model = opts.model_name,
+    system_prompt = opts.system_prompt or "",
+    messages = opts.messages,
+    temperature = temperature,
+    max_tokens = max_tokens,
+  })
 end
 
---- @param backend_name BackendServiceNames
+--- @param backend_name BackendServiceName
 --- @param data_chunk string
 --- @return string
 local extract_text_from_stream_data = function(backend_name, data_chunk)
@@ -169,18 +279,24 @@ local extract_text_from_stream_data = function(backend_name, data_chunk)
   return result or ""
 end
 
---- @param name BackendServiceNames
 --- @param opts BackendAskOpts
 --- @return Job
-function M:ask(name, opts)
-  local url, headers, body = prepare_request(self, name, opts)
+M.ask = function(opts)
+  local url, headers, body = prepare_request({
+    backend = config[state.active_backend],
+    model_name = state.active_model,
+    max_tokens = opts.max_tokens,
+    temperature = opts.temperature,
+    system_prompt = opts.system_prompt,
+    messages = opts.messages,
+  })
 
   if opts.on_start then
     vim.schedule(
       function()
         opts.on_start({
-          backend_name = name,
-          model = body.model,
+          backend_name = state.active_backend,
+          model = state.active_model,
           temperature = body.temperature,
         })
       end
@@ -207,40 +323,53 @@ function M:ask(name, opts)
     stream = function(_, chunk)
       if opts.on_data and chunk and chunk ~= "" then
         vim.schedule(
-          function() opts.on_data(extract_text_from_stream_data(name, chunk)) end
+          function()
+            opts.on_data(
+              extract_text_from_stream_data(state.active_backend, chunk)
+            )
+          end
         )
       end
     end,
   })
 end
 
---- Update internal configs for a specific backend
---- @param name BackendServiceNames
---- @param config table
-function M:set_config(name, config)
-  self[name] = vim.tbl_deep_extend("force", self[name], config)
+--- @param name BackendServiceName
+M.set_active_backend = function(name)
+  if not config[name] then
+    Logger.error("Invalid backend", { name = name or "nil" })
+    return
+  end
+  state.active_backend = name
 end
 
---- Predicate checking if a backend service is defined
---- @param name string
---- @return boolean
-function M:is_backend_supported(name) return self[name] ~= nil end
+--- @return BackendServiceName
+M.get_active_backend = function() return state.active_backend end
 
---- Predicate checking if a model is supported by a backend
---- @param opts { backend: BackendServiceNames, model: string }
---- @return boolean
-function M:is_model_supported(opts)
-  if not opts.model then return false end
-  if not opts.backend then return false end
-  if not self[opts.backend] then return false end
-  return self[opts.backend].available_models[opts.model] ~= nil
+--- @return BackendServiceName[]
+M.get_backend_names = function() return vim.tbl_keys(config) end
+
+--- @param name string
+M.set_active_model = function(name)
+  if not config[state.active_backend].available_models[name] then
+    Logger.error("Invalid model for the active backend", {
+      backend = state.active_backend,
+      model = name,
+      available_models = vim.tbl_keys(
+        config[state.active_backend].available_models
+      ),
+    })
+    return
+  end
+  state.active_model = name
 end
 
---- Predicate checking if a backend service is active/usable
---- @param name string
---- @return boolean
-function M:is_backend_usable(name)
-  return self[name] ~= nil and self[name].api_key ~= nil
+--- @return string
+M.get_active_model = function() return state.active_model end
+
+--- @return string[]
+M.get_available_models = function()
+  return vim.tbl_keys(config[state.active_backend].available_models)
 end
 
 return M

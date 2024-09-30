@@ -1,34 +1,23 @@
 --- Utilities imports
 local Logger = require("deckr41.utils.logger") --- @type Logger
 local StringUtils = require("deckr41.utils.string") --- @type StringUtils
+local TableUtils = require("deckr41.utils.table") --- @type TableUtils
 local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
 local VimAPI = vim.api
 
 --- Domain imports
 local Backend = require("deckr41.backend") --- @type BackendModule
 local Commands = require("deckr41.commands") --- @type CommandsModule
+local Dashboard = require("deckr41.dashboard") --- @type Dashboard
 local Keyboard = require("deckr41.keyboard") --- @type KeyboardModule
 local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
-
---- @class ConfigModule
---- @field backends ?table<BackendServiceNames, BackendService>
---- @field active_backend ?BackendServiceNames
---- @field active_model ?string
---- @field modes ?KeyboardModes
---- @field active_mode ?KeyboardModeName
 
 --- @class Deckr41PluginState
 --- @field running_command_job ?Job
 
 --- @class Deckr41Plugin
---- @field config ?ConfigModule
 --- @field state Deckr41PluginState
 local M = {
-  config = {
-    -- backends = nil,
-    -- active_backend = "anthropic",
-    -- active_model = nil,
-  },
   state = {
     -- Plenary Job of currently running command
     running_command_job = nil,
@@ -51,8 +40,7 @@ local run_command = function(command_id)
       and StringUtils.interpolate(command.system_prompt, context)
     or nil
 
-  M.state.running_command_job = Backend:ask(M.config.active_backend, {
-    model = M.config.active_model,
+  local status, job = pcall(Backend.ask, {
     system_prompt = system_prompt,
     max_tokens = command.max_tokens,
     temperature = command.temperature,
@@ -85,6 +73,17 @@ local run_command = function(command_id)
       end
     end,
   })
+
+  if not status then
+    Logger.error(
+      "Something went wrong trying to run command",
+      { id = command_id, error = job }
+    )
+    M.state.running_command_job = nil
+    return
+  end
+
+  M.state.running_command_job = job
 end
 
 -- Prompt the user to select an LLM command
@@ -103,44 +102,23 @@ M.select_and_apply_command_or_accept_suggestion = function()
   end
 end
 
---- Configure available backends
---- @param backend_configs ?table<string, BackendService>
-local setup_backends = function(backend_configs)
-  if not backend_configs then return end
+--- @class SetupOpts
+--- @field backends ?BackendServices
+--- @field active_backend ?BackendServiceName
+--- @field active_model ?string
+--- @field modes ?KeyboardModes
+--- @field active_mode ?KeyboardModeName
 
-  for backend_name, backend_config in pairs(backend_configs) do
-    if not Backend:is_backend_supported(backend_name) then
-      Logger.error(
-        "Invalid backend, accepted values are 'openai' and 'anthropic'.",
-        { name = backend_name }
-      )
-    else
-      if not M.config.active_backend then
-        M.config.active_backend = backend_name
-      end
-      Backend:set_config(backend_name, backend_config)
-    end
-  end
-end
-
---- Main plugin entry point
---- @param opts ?ConfigModule
+--- Deckr41 plugin main entry point
+--- @param opts ?SetupOpts
 M.setup = function(opts)
   opts = opts or {}
-  M.config = vim.tbl_deep_extend("force", M.config, {}, opts)
 
-  setup_backends(M.config.backends)
-
-  if not M.config.active_backend then
-    -- Prioritize Anthropic
-    if os.getenv("ANTHROPIC_API_KEY") then
-      M.config.active_backend = "anthropic"
-    elseif os.getenv("OPENAI_API_KEY") then
-      M.config.active_backend = "openai"
-    else
-      Logger.error("No active backend specified and no API keys found.")
-    end
-  end
+  Backend.setup({
+    backends = opts.backends,
+    active_backend = opts.active_backend,
+    active_model = opts.active_model,
+  })
 
   -- Scan and load all .d41rc or .d41rc.json files
   Commands:load_all()
