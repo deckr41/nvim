@@ -21,7 +21,7 @@ local M = {}
 
 --- @class KeyboardConfig
 --- @field modes KeyboardModes
-local default_config = {
+local config = {
   modes = {
     ["easy-does-it"] = {
       command = "finish-line",
@@ -54,8 +54,7 @@ local state = {
 
 --- @param opts KeyboardSetupOpts
 M.setup = function(opts)
-  local config =
-    vim.tbl_deep_extend("force", default_config, { modes = opts.modes })
+  local config = vim.tbl_deep_extend("force", config, { modes = opts.modes })
   state.active_mode = opts.active_mode or "easy-does-it"
 
   M.setup_keymaps(opts, config)
@@ -142,33 +141,32 @@ M.setup_autocmds = function(opts, config)
   })
 
   -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
-  if state.active_mode == "r-for-rocket" then
-    local mode = config.modes[state.active_mode]
-    local debounced_command, timer = FnUtils.debounce(
-      function() opts.on_command(mode.command) end,
-      { reset_duration = mode.timeout }
-    )
+  local mode = config.modes[state.active_mode]
+  local debounced_command, timer = FnUtils.debounce(function()
+    if state.active_mode == "r-for-rocket" then
+      opts.on_command(mode.command)
+    end
+  end, { reset_duration = mode.timeout })
 
-    VimAPI.nvim_create_autocmd("InsertEnter", {
-      group = augroup,
-      callback = function() debounced_command() end,
-    })
+  VimAPI.nvim_create_autocmd("InsertEnter", {
+    group = augroup,
+    callback = function() debounced_command() end,
+  })
 
-    VimAPI.nvim_create_autocmd("TextChangedI", {
-      group = augroup,
-      callback = function() debounced_command() end,
-    })
+  VimAPI.nvim_create_autocmd("TextChangedI", {
+    group = augroup,
+    callback = function() debounced_command() end,
+  })
 
-    VimAPI.nvim_create_autocmd("InsertLeave", {
-      group = augroup,
-      callback = function() timer:stop() end,
-    })
-  end
+  VimAPI.nvim_create_autocmd("InsertLeave", {
+    group = augroup,
+    callback = function() timer:stop() end,
+  })
 end
 
 --- @param mode KeyboardModeName
 M.set_mode = function(mode)
-  if not default_config.modes[mode] then
+  if not config.modes[mode] then
     Logger.error("Invalid mode", { mode = mode })
     return
   end
@@ -176,6 +174,6 @@ M.set_mode = function(mode)
 end
 
 --- @return KeyboardModeName
-M.get_modes = function() return vim.tbl_keys(default_config.modes) end
+M.get_modes = function() return vim.tbl_keys(config.modes) end
 
 return M
