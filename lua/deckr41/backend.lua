@@ -23,7 +23,7 @@ local config = {
     id = "openai",
     url = "https://api.openai.com/v1/chat/completions",
     api_key = os.getenv("OPENAI_API_KEY"),
-    default_model = "gpt-4o",
+    default_model = "gpt-4o-2024-08-06",
     -- https://platform.openai.com/docs/models/gpt-4o
     available_models = {
       -- High-intelligence flagship model for complex, multi-step tasks.
@@ -341,6 +341,7 @@ M.set_active_backend = function(name)
     return
   end
   state.active_backend = name
+  state.active_model = config[name].default_model
 end
 
 --- @return BackendServiceName
