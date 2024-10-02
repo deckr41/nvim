@@ -112,4 +112,17 @@ M.imap = function(array, func)
   return result_array
 end
 
+--- Calculate the max value of an array (indexed table) after applying a function.
+--- If the array is nil or empty, returns `nil`
+--- @generic T
+--- @param array T[]
+--- @param fn fun(item: T): number
+--- @return integer|nil
+M.max_with = function(array, fn)
+  if not array or #array == 0 then return nil end
+  array = M.imap(array, fn)
+
+  return math.max(unpack(array))
+end
+
 return M
