@@ -165,7 +165,7 @@ M.setup_autocmds = function(opts, config)
 end
 
 --- @param mode KeyboardModeName
-M.set_mode = function(mode)
+M.set_active_mode = function(mode)
   if not config.modes[mode] then
     Logger.error("Invalid mode", { mode = mode })
     return
@@ -173,7 +173,10 @@ M.set_mode = function(mode)
   state.active_mode = mode
 end
 
---- @return KeyboardModeName
+--- @return KeyboardModeName[]
 M.get_modes = function() return vim.tbl_keys(config.modes) end
+
+--- @return KeyboardModeName
+M.get_active_mode = function() return state.active_mode end
 
 return M
