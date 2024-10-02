@@ -119,10 +119,14 @@ end
 --- @param fn fun(item: T): number
 --- @return integer|nil
 M.max_with = function(array, fn)
-  if not array or #array == 0 then return nil end
-  array = M.imap(array, fn)
-
-  return math.max(unpack(array))
+  local max_value = nil
+  for _, item in ipairs(array) do
+    local value = fn(item)
+    if value ~= nil then
+      if max_value == nil or value > max_value then max_value = value end
+    end
+  end
+  return max_value
 end
 
 return M
