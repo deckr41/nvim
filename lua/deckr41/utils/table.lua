@@ -112,16 +112,18 @@ M.imap = function(array, func)
   return result_array
 end
 
---- Calculate the max value of an array (indexed table) after applying a function.
---- If the array is nil or empty, returns `nil`
+--- Calculate the max value of an array (indexed table) after applying a
+--- `to_value_fn` function.
+--- If the array is `nil` or empty, returns `nil`.
+--- Skip an element by returning `nil` in `to_value_fn`.
 --- @generic T
 --- @param array T[]
---- @param fn fun(item: T): number
+--- @param to_value_fn fun(item: T): number|nil
 --- @return integer|nil
-M.max_with = function(array, fn)
+M.max_with = function(array, to_value_fn)
   local max_value = nil
   for _, item in ipairs(array) do
-    local value = fn(item)
+    local value = to_value_fn(item)
     if value ~= nil then
       if max_value == nil or value > max_value then max_value = value end
     end
