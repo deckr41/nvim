@@ -8,15 +8,24 @@ local M = {}
 --- @field noremap? boolean
 --- @field silent? boolean
 
---- Add a new keymap
+--- Sets a global |mapping| for the given mode.
+--- Wrapper over `vim.api.nvim_set_keymap` with the followind defautls:
+---  `nowait` = false
+---  `noremap` = true
+---  `silent` = true
 --- @param opts AddKeymapOpts
 M.add_keymap = function(shortcut, opts)
-  vim.api.nvim_set_keymap(opts.mode, shortcut, "", {
-    nowait = opts.nowait or false,
-    noremap = opts.noremap or true,
-    silent = opts.silent or true,
-    callback = opts.action,
-  })
+  vim.api.nvim_set_keymap(
+    opts.mode,
+    shortcut,
+    "",
+    vim.tbl_deep_extend("force", {
+      nowait = opts.nowait or false,
+      noremap = opts.noremap or true,
+      silent = opts.silent or true,
+      callback = opts.action,
+    }, {})
+  )
 end
 
 --- @class AddKeymapsOpts
@@ -58,17 +67,25 @@ end
 --- @field force? boolean
 --- @field bang? boolean
 
---- Adda new command
+--- Creates a global |user-commands| command.
+--- Wrapper over `vim.api.nvim_create_user_command` with
+---  `nargs` = 0
+---  `force` = false
+---  `bang` = false
 --- @param opts AddCommandOpts
 M.add_command = function(name, opts)
-  opts = opts or {}
-  vim.api.nvim_create_user_command(name, opts.action, {
-    nargs = opts.nargs or 0,
-    complete = opts.complete,
-    desc = opts.desc,
-    force = opts.force or false,
-    bang = opts.bang or false,
-  })
+  local action = opts.action
+  opts.action = nil
+
+  vim.api.nvim_create_user_command(
+    name,
+    action,
+    vim.tbl_deep_extend("force", opts, {
+      nargs = 0,
+      force = false,
+      bang = false,
+    })
+  )
 end
 
 -- Sets multiple buffer options. Passing `nil` as value deletes the option
