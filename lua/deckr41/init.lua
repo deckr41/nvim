@@ -1,32 +1,36 @@
 --- Utilities imports
 local Logger = require("deckr41.utils.logger") --- @type Logger
+local NVimUtils = require("deckr41.utils.nvim") --- @type NVimUtils
+local SelectUI = require("deckr41.ui.select") --- @type SelectUI
 local StringUtils = require("deckr41.utils.string") --- @type StringUtils
 local TableUtils = require("deckr41.utils.table") --- @type TableUtils
 local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
-local VimAPI = vim.api
 
 --- Domain imports
 local Backend = require("deckr41.backend") --- @type BackendModule
 local Commands = require("deckr41.commands") --- @type CommandsModule
-local Dashboard = require("deckr41.dashboard") --- @type Dashboard
 local Keyboard = require("deckr41.keyboard") --- @type KeyboardModule
 local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
 
---- @class Deckr41PluginState
---- @field running_command_job ?Job
-
 --- @class Deckr41Plugin
---- @field state Deckr41PluginState
-local M = {
-  state = {
-    -- Plenary Job of currently running command
-    running_command_job = nil,
-  },
+local M = {}
+
+--- @class Deckr41PluginConfig
+--- @field emoji_title string
+local config = {
+  emoji_title = "  + 󰚩",
+}
+
+--- @class Deckr41PluginState
+--- @field running_command_job? Job
+local state = {
+  -- Plenary Job of currently running command
+  running_command_job = nil,
 }
 
 ---@param command_id string
 local run_command = function(command_id)
-  if M.state.running_command_job ~= nil then return end
+  if state.running_command_job ~= nil then return end
 
   local command = Commands:get_command_by_id(command_id)
   if not command then
@@ -79,11 +83,11 @@ local run_command = function(command_id)
       "Something went wrong trying to run command",
       { id = command_id, error = job }
     )
-    M.state.running_command_job = nil
+    state.running_command_job = nil
     return
   end
 
-  M.state.running_command_job = job
+  state.running_command_job = job
 end
 
 -- Prompt the user to select an LLM command
@@ -102,17 +106,44 @@ M.select_and_apply_command_or_accept_suggestion = function()
   end
 end
 
+--- @return SelectUIItemGroup[]
+local build_main_menu_item_groups = function()
+  local to_item = function(text) return { id = text, text = text } end
+
+  return {
+    {
+      id = "keyboard",
+      selected = Keyboard.get_active_mode(),
+      items = TableUtils.imap(Keyboard.get_modes(), to_item),
+    },
+    {
+      id = "backends",
+      selected = Backend.get_active_backend(),
+      items = TableUtils.imap(Backend.get_backend_names(), to_item),
+    },
+    {
+      id = "models",
+      selected = Backend.get_active_model(),
+      items = TableUtils.imap(Backend.get_available_models(), to_item),
+    },
+  }
+end
+
 --- @class SetupOpts
---- @field backends ?BackendServices
---- @field active_backend ?BackendServiceName
---- @field active_model ?string
---- @field modes ?KeyboardModes
---- @field active_mode ?KeyboardModeName
+--- @field backends? BackendServices
+--- @field active_backend? BackendServiceName
+--- @field active_model? string
+--- @field modes? KeyboardModes
+--- @field active_mode? KeyboardModeName
 
 --- Deckr41 plugin main entry point
---- @param opts ?SetupOpts
+--- @param opts? SetupOpts
 M.setup = function(opts)
   opts = opts or {}
+
+  --
+  -- Backends - Configure available backends and models
+  --
 
   Backend.setup({
     backends = opts.backends,
@@ -120,15 +151,60 @@ M.setup = function(opts)
     active_model = opts.active_model,
   })
 
-  -- Scan and load all .d41rc or .d41rc.json files
+  --
+  -- AI Commands - Scan and load commands from .d41rc or .d41rc.json files
+  --
+
   Commands:load_all()
 
-  -- Copy default commands into the user's cwd for convenient overwrites
-  VimAPI.nvim_create_user_command(
-    "D41Eject",
-    function() Commands:eject() end,
-    {}
-  )
+  NVimUtils.add_command("D41EjectDefaultCommands", {
+    action = function() Commands:eject() end,
+  })
+
+  --
+  -- Control Panel
+  --
+
+  local control_panel = SelectUI.build({
+    title = config.emoji_title,
+    items = build_main_menu_item_groups(),
+    on_change = function(self, item)
+      local backend = Backend.get_active_backend()
+      local model = Backend.get_active_model()
+      local keyboard_mode = Keyboard.get_active_mode()
+      local somethig_changed = false
+
+      if item.group_id == "backends" and backend ~= item.id then
+        Backend.set_active_backend(item.id)
+        somethig_changed = true
+      elseif item.group_id == "models" and model ~= item.id then
+        Backend.set_active_model(item.id)
+        somethig_changed = true
+      elseif item.group_id == "keyboard" and keyboard_mode ~= item.id then
+        Keyboard.set_active_mode(item.id)
+        somethig_changed = true
+      end
+
+      if somethig_changed == true then
+        self.refresh(build_main_menu_item_groups())
+      end
+    end,
+  })
+
+  NVimUtils.add_command("D41OpenControlPanel", {
+    action = control_panel.open,
+    desc = config.emoji_title .. " | Open control panel",
+  })
+
+  NVimUtils.add_keymap("<leader>dp", {
+    mode = "n",
+    action = control_panel.open,
+    desc = config.emoji_title .. " | Open control panel",
+  })
+
+  --
+  -- Keyboard
+  --
 
   Keyboard.setup({
     active_mode = opts.active_mode,
@@ -136,13 +212,13 @@ M.setup = function(opts)
     can_accept = function()
       return Suggestion:is_finished() and Suggestion.text ~= ""
     end,
-    is_command_running = function() return M.state.running_command_job ~= nil end,
+    is_command_running = function() return state.running_command_job ~= nil end,
     on_command = run_command,
     on_accept = function() Suggestion:apply() end,
     on_refuse = function()
-      if M.state.running_command_job then
-        M.state.running_command_job:shutdown(41)
-        M.state.running_command_job = nil
+      if state.running_command_job then
+        state.running_command_job:shutdown(41)
+        state.running_command_job = nil
         Suggestion:reset_and_close()
       end
     end,
