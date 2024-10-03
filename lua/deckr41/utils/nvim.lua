@@ -15,16 +15,23 @@ local M = {}
 ---  `silent` = true
 --- @param opts AddKeymapOpts
 M.add_keymap = function(shortcut, opts)
+  local action = opts.action
+  local mode = opts.mode
+
+  -- `nvim_set_keymap` does not recognize them and throws
+  opts.mode = nil
+  opts.action = nil
+
   vim.api.nvim_set_keymap(
-    opts.mode,
+    mode,
     shortcut,
     "",
     vim.tbl_deep_extend("force", {
-      nowait = opts.nowait or false,
-      noremap = opts.noremap or true,
-      silent = opts.silent or true,
-      callback = opts.action,
-    }, {})
+      nowait = false,
+      noremap = true,
+      silent = true,
+      callback = action,
+    }, opts)
   )
 end
 
@@ -75,6 +82,7 @@ end
 --- @param opts AddCommandOpts
 M.add_command = function(name, opts)
   local action = opts.action
+  -- `nvim_create_user_command` does not recognize and throws
   opts.action = nil
 
   vim.api.nvim_create_user_command(
