@@ -1,5 +1,5 @@
-local Logger = require("deckr41.utils.logger") --- @class Logger
-local TableUtils = require("deckr41.utils.table") --- @class TableUtils
+local Logger = require("deckr41.utils.logger")
+local TableUtils = require("deckr41.utils.table")
 local curl = require("plenary.curl")
 
 --- @class BackendModule

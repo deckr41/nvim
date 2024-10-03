@@ -1,5 +1,5 @@
-local StringUtils = require("deckr41.utils.string") --- @class StringUtils
-local WindowUtils = require("deckr41.utils.window") --- @class WindowUtils
+local StringUtils = require("deckr41.utils.string")
+local WindowUtils = require("deckr41.utils.window")
 local VimAPI = vim.api
 
 --- @class SuggestionModule

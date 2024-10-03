@@ -1,8 +1,8 @@
-local ArrayUtils = require("deckr41.utils.array") --- @class ArrayUtils
-local FSUtils = require("deckr41.utils.fs") --- @class FSUtils
-local FnUtils = require("deckr41.utils.fn") --- @class FnUtils
-local Logger = require("deckr41.utils.logger") --- @class Logger
-local WindowUtils = require("deckr41.utils.window") --- @class WindowUtils
+local ArrayUtils = require("deckr41.utils.array")
+local FSUtils = require("deckr41.utils.fs")
+local FnUtils = require("deckr41.utils.fn")
+local Logger = require("deckr41.utils.logger")
+local WindowUtils = require("deckr41.utils.window")
 
 --- @class RCFileCommand
 --- @field id string

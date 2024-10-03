@@ -1,6 +1,6 @@
 local VimAPI = vim.api
-local FnUtils = require("deckr41.utils.fn") --- @type FnUtils
-local Logger = require("deckr41.utils.logger") --- @type Logger
+local FnUtils = require("deckr41.utils.fn")
+local Logger = require("deckr41.utils.logger")
 
 --- @class KeyboardModule
 local M = {}

@@ -1,5 +1,5 @@
-local NVimUtils = require("deckr41.utils.nvim") --- @type NVimUtils
-local TableUtils = require("deckr41.utils.table") --- @type TableUtils
+local NVimUtils = require("deckr41.utils.nvim")
+local TableUtils = require("deckr41.utils.table")
 
 --- @class SelectUIItem
 --- @field id string

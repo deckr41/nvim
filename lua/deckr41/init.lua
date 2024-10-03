@@ -1,16 +1,16 @@
 --- Utilities imports
-local Logger = require("deckr41.utils.logger") --- @type Logger
-local NVimUtils = require("deckr41.utils.nvim") --- @type NVimUtils
-local SelectUI = require("deckr41.ui.select") --- @type SelectUI
-local StringUtils = require("deckr41.utils.string") --- @type StringUtils
-local TableUtils = require("deckr41.utils.table") --- @type TableUtils
-local TelescopeUtils = require("deckr41.utils.telescope") --- @type TelescopeUtils
+local Logger = require("deckr41.utils.logger")
+local NVimUtils = require("deckr41.utils.nvim")
+local SelectUI = require("deckr41.ui.select")
+local StringUtils = require("deckr41.utils.string")
+local TableUtils = require("deckr41.utils.table")
+local TelescopeUtils = require("deckr41.utils.telescope")
 
 --- Domain imports
-local Backend = require("deckr41.backend") --- @type BackendModule
-local Commands = require("deckr41.commands") --- @type CommandsModule
-local Keyboard = require("deckr41.keyboard") --- @type KeyboardModule
-local Suggestion = require("deckr41.suggestion") --- @type SuggestionModule
+local Backend = require("deckr41.backend")
+local Commands = require("deckr41.commands")
+local Keyboard = require("deckr41.keyboard")
+local Suggestion = require("deckr41.suggestion")
 
 --- @class Deckr41Plugin
 local M = {}
@@ -54,9 +54,9 @@ local run_command = function(command_id)
         content = prompt,
       },
     },
-    on_start = function(config)
+    on_start = function(be_config)
       Suggestion.meta.bar_right =
-        string.format("%s / %s ", command_id, config.model or "?")
+        string.format("%s / %s ", command_id, be_config.model or "?")
       Suggestion:start_loading()
       Suggestion:show()
     end,
