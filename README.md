@@ -27,6 +27,7 @@ and composing Pure Agents to build features across your entire codebase.
 
 - [ ] Implement tool support
 - [ ] **Run commands** in **NORMAL** and **VISUAL** modes
+- [x] **Reload** `.d41rc` files **on-change**
 - [x] Get **auto-completion** suggestions in **INSERT** mode
 - [x] **Switch at run-time** backend, model and keyboard modes
 - [x] Implement `easy-does-it` and `r-for-rocket` **keyboard modes**
