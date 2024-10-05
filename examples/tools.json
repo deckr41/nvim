@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/tools.json",
+  "tools": [
+    {
+      "name": "calculator",
+      "description": "A simple calculator that performs basic arithmetic operations.",
+      "input": {
+        "expression": {
+          "type": "string",
+          "description": "The mathematical expression to evaluate (e.g., '2 + 3 * 4').",
+          "is_required": true
+        }
+      }
+    }
+  ]
+}
