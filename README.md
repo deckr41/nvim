@@ -1,56 +1,324 @@
 # deckr41/nvim
 
-> A Neovim plugin that augments coding with 🤖 LLM capabilities, allowing
-> per-project AI customization through 📂 collocated `.d41rc` files that serve
-> as agents for your project folders—think monorepo packages.
+> Functional programming with *AI agents instead of functions* and *folders
+> instead of parameters*.  
+> **:brain: Pure Agents** encapsulate domain-specific knowledge and
+> capabilities, while **:musical_score: Higher-Order Agents** orchestrate them
+> to solve complex problems across your codebase.
+
+`deckr41/nvim` is a Neovim plugin that adds 🤖 LLM capabilities directly into
+your workflow, allowing per-project AI customization through 📂 collocated
+`.d41rc` files, turning folders into **Pure Agents**—AI agents with their own
+identity, mission and context, akin to pure functions with clear domains and
+boundaries.
+
+At a higher level, your projects become **Higher-Order Agents**, orchestrating
+and composing Pure Agents to build features across your entire codebase.
 
 ![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
 
-:construction: **Prompt Engineering**  
+## Progress
 
-- Customize AI behavior with `commands` in `.d41rc` files.
-- Turn folders into AI agents, facilitating multi-agent workflows.
+> [!IMPORTANT]
+> Most is work in progress and subject to change. The repo serves as my own
+> scratchpad while I iterate and reason about what I actually want.  
+> The plugin is functional but many advanced capabilities are still in
+> progress.
 
-:gear: **Multiple gears**  
+- [ ] Implement tool support
+- [ ] **Run commands** in **NORMAL** and **VISUAL** modes
+- [x] Get **auto-completion** suggestions in **INSERT** mode
+- [x] **Switch at run-time** backend, model and keyboard modes
+- [x] Implement `easy-does-it` and `r-for-rocket` **keyboard modes**
+- [x] **Scan and load commands** from `.d41rc` files up the tree
 
-- **On-demand**: Unblock with `<Shift-RightArrow>`.  
-  Use LLM suggestions when stuck, saving yourself a web search without breaking
-  flow.  
-  Run custom commands for exploration and learning.
-- **Real-time**: Get as-you-type suggestions with a configurable timeout.  
-  Tread carefully, *tab-coding* rhymes with *doom-scrolling*.
+## :star2: Features
 
-:hammer: **Tools** *(Work in Progress)*  
+### :keyboard: Simple one-shot Commands
 
-- Extend AI with custom tools for tasks like computations and API interactions.
+Define prompts with context, variable interpolation, model parameter control
 
-:mag: **Semantic Search** *(Work in Progress)*  
+<details>
+<summary>Example of a Command `.d41rc` file, explaining a piece of code:</summary>
 
-- Link files or perform project-wide semantic searches to enhance AI context.
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/deckr41/nvim/schemas/rc.json",
+  "commands": [
+    {
+      "id": "explain-code",
+      "system_prompt": "You are the best explainer of {{FILE_SYNTAX}} code there is, the greatest meaning and intention unraveller. You are a mind reader and have deep insight into what the user wanted to achieve.",
+      "context": [
+        {
+          "prompt": [
+            "For reference, the main project README.md:",
+            "",
+            "```markdown",
+            "{{file://README.md}}",
+            "```"
+          ]
+        }
+      ],
+      "prompt": [
+        "Explain the following code focusing on its purpose, structure, and any notable patterns or techniques used:",
+        "",
+        "{{FILE_PATH}}",
+        "```{{FILE_SYNTAX}}",
+        "{{FULL_TEXT}}",
+        "```"
+      ],
+      "temperature": 0.2,
+      "max_tokens": 500
+    }
+  ]
+}
+```
+</details>
+
+### :brain: Pure Agents
+
+Encapsulate domain-specific knowledge using 📂 collocated `.d41rc` files,
+acting like pure functions with clear domains and no side effects.
+
+<details>
+<summary>Example of a Pure Agent `.d41rc` file, responsible for a React UI button component:</summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/deckr41/nvim/schemas/rc.json",
+  "agent": {
+    "id": "ui-button",
+    "identity": "You are a Pure Agent responsible for the 'UIButton' component in a React application.",
+    "domain": [
+      "Your domain is strictly within the UIButton component, and you should not make changes outside of it.",
+      "You are responsible for and allowed to make changes to the following files:",
+      "{{FOLDER_TREE}}"
+    ],
+    "mission": [
+      "Your mission is to implement features or modifications to the UIButton component as requested, while adhering to the component's responsibilities.",
+      "You have deep knowledge of React, JavaScript, and UI best practices."
+    ]
+  },
+  "commands": [
+    {
+      "id": "fulfill-purpose",
+      "parameters": {
+        "request": {
+          "type": "string",
+          "description": "User's question or assignment",
+          "is_required": true
+        },
+        "context":{
+          "type": "string",
+          "description": ""
+        }
+      },
+      "system_prompt": [
+        "{{AGENT_IDENTITY}}",
+        "{{AGENT_DOMAIN}}",
+        "{{AGENT_MISSION}}"
+      ],
+      "context": [
+        {
+          "semantic-search": {
+            "query": "{{PARAMS.request}}"
+          }
+        },
+        {
+          "prompt": [
+            "Component description and usage guidelines:",
+            "",
+            "{{file://README.md}}"
+          ]
+        }
+      ],
+      "prompt": [
+        "## Request",
+        "{{PARAMS.request}}",
+        "",
+        "## Constraints",
+        "- Ensure the UIButton remains reusable and maintains existing functionality.",
+        "- Any new props or features added must be relevant to a UI button.",
+        "- Do not modify or reference code outside of the UIButton component.",
+        "",
+        "## Instructions",
+        "Provide only the updated code for the UIButton component, incorporating the requested feature."
+      ],
+      "temperature": 0.2,
+      "max_tokens": 500
+    }
+  ]
+}
+```
+</details>
+
+### :musical_score: Higher-Order Agents
+
+Projects act as orchestrators, composing Pure Agents to solve complex, cross-cutting problems across your codebase.
+
+<details>
+<summary>Example of a Higher-Order Agent `.d41rc` file, responsible for a React application:</summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/deckr41/nvim/schemas/rc.json",
+  "agent": {
+    "id": "react-app-hoa",
+    "identity": "You are a Higher-Order Agent responsible for orchestrating Pure Agents to implement complex features across the codebase.",
+    "domain": [
+      "Your domain encompasses the entire project, and you can coordinate with any Pure Agents defined within it.",
+      "You have access to the following Pure Agents as Tools:",
+      "{{AGENTS_LIST}}"
+    ],
+    "mission": [
+      "Your mission is to plan, coordinate, and implement features that require collaboration among multiple Pure Agents.",
+      "You ensure that each Pure Agent works within its domain while contributing to the overall goal."
+    ]
+  },
+  "commands": [
+    {
+      "id": "fulfill-purpose",
+      "parameters": {
+        "request": {
+          "type": "string",
+          "description": "User's question or assignment",
+          "is_required": true
+        }
+      },
+      "system_prompt": [
+        "{{AGENT.identity}}",
+        "{{AGENT.domain}}",
+        "{{AGENT.mission}}"
+      ],
+      "tools": [
+        "agent://ui-button",
+        "agent://utility-functions"
+      ],
+      "context": [
+        {
+          "prompt": [
+            "Project-wide guidelines and best practices:",
+            "",
+            "{{file://docs/ProjectGuidelines.md}}"
+          ]
+        }
+      ],
+      "prompt": [
+        "## Request",
+        "{{USER_REQUEST}}",
+        "",
+        "## Plan",
+        "Develop a step-by-step plan to fulfill the request by coordinating with the appropriate Pure Agents using the available Tools.",
+        "",
+        "## Execution",
+        "Execute the plan by invoking the necessary Tools and collecting their outputs.",
+        "",
+        "## Constraints",
+        "- Ensure each Pure Agent operates strictly within its domain.",
+        "- Provide clear instructions when invoking each Tool.",
+        "- Do not perform changes directly; delegate tasks to Pure Agents.",
+        "",
+        "## Instructions",
+        "Provide the final implementation plan and any code or instructions resulting from the coordination."
+      ],
+      "temperature": 0.3,
+      "max_tokens": 1000
+    }
+  ]
+}
+```
+</details>
+
+### :floppy_disk: Commands and Agents as Code
+
+Implement AI commands and agents through code, allowing
+you to version-control, share, and collaborate on AI
+behaviors alongside your codebase.
+
+### :hammer: Tools
+
+Extend AI with custom tools for tasks like computations and API interactions.
+
+<details>
+<summary>1. Define tools locally in `./.deckr41/tools.json`, next to `.d41rc`:</summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/deckr41/nvim/schemas/tools.json",
+  "tools": [
+    {
+      "name": "calculator",
+      "description": "A simple calculator that performs basic arithmetic operations.",
+      "input": {
+        "expression": {
+          "type": "string",
+          "description": "The mathematical expression to evaluate (e.g., '2 + 3 * 4').",
+          "isRequired": true
+        }
+      }
+    }
+  ]
+}
+```
+</details>
+
+
+<details>
+<summary>2. Reference them in your commands:</summary>
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/deckr41/nvim/schemas/rc.json",
+  "commands": [
+    {
+      "id": "calculate",
+      "system_prompt": [
+        "You are a mathematical assistant."
+      ],
+      "tools": [
+        "calculator"
+      ],
+      "prompt": [
+        "Calculate the following expression:",
+        "",
+        "{{FULL_TEXT}}"
+      ],
+      "temperature": 0,
+      "max_tokens": 50
+    }
+  ]
+}
+```
+</details>
+
+### :mag: Semantic Search
+
+Link files or perform project-wide semantic searches to enhance AI context.
 
 :books: **Retrieval-Augmented Generation (RAG) with
 [DevDocs](https://github.com/freeCodeCamp/devdocs/tree/main)** *(Work in
 Progress)*  
-- Integrate with [devdocs.io](https://devdocs.io/) for accurate, context-rich
-  AI responses.
+
+Integrate with [devdocs.io](https://devdocs.io/) for accurate, context-rich AI
+responses.
 
 ## Table of contents
 
 <!-- vim-markdown-toc GFM -->
 
 * [Installation](#installation)
-    * [Minimal Configuration](#minimal-configuration)
-    * [Modes](#modes)
-    * [Full Configuration Options](#full-configuration-options)
-    * [Setting Up API Keys](#setting-up-api-keys)
+  * [Minimal Configuration](#minimal-configuration)
+  * [Modes](#modes)
+  * [Full Configuration Options](#full-configuration-options)
+  * [Setting Up API Keys](#setting-up-api-keys)
 * [Usage](#usage)
-    * [Default Keybindings](#default-keybindings)
-    * [Commands](#commands)
+  * [Default Keybindings](#default-keybindings)
+  * [Commands](#commands)
 * [Understanding `.d41rc`](#understanding-d41rc)
-    * [Structure and Commands](#structure-and-commands)
-    * [Variable Interpolation](#variable-interpolation)
+  * [Structure and Commands](#structure-and-commands)
+  * [Variable Interpolation](#variable-interpolation)
 * [Development](#development)
-    * [Code overview](#code-overview)
+  * [Code overview](#code-overview)
 * [Credits](#credits)
 
 <!-- vim-markdown-toc -->
@@ -68,7 +336,10 @@ environment variables set. If both are set, Anthropic is used.
 {
   "deckr41/nvim",
   event = { "BufEnter" },
-  opts = {}
+  opts = {
+    -- Your configuration here or leave empty for defaults.
+    -- See below all options.
+  },
   dependencies = {
     "nvim-lua/plenary.nvim",
     "nvim-telescope/telescope.nvim",
@@ -205,7 +476,7 @@ Each `.d41rc` is a JSON object containing commands:
         "Now. Take a deep breath. Each word written unfolds the answer."
       ],
       "prompt": [
-        "${FULL_TEXT}"
+        "{{FULL_TEXT}}"
       ],
       "temperature": 0.7,
       "max_tokens": 100
@@ -220,12 +491,12 @@ Refer to the schema definition [here](.d41rc-schema.json).
 
 The `system_prompt` and `prompt` fields support dynamic variable interpolation:
 
-- **`${FILE_PATH}`**: Current file path.
-- **`${FILE_SYNTAX}`**: Current file's language.
-- **`${FILE_CONTENT}`**: Entire document.
-- **`${LINES_BEFORE_CURRENT}`**: Code before the line.
-- **`${TEXT_BEFORE_CURSOR}`**: Text before cursor.
-- **`${LINES_AFTER_CURRENT}`**: Code after the line.
+- **`{{FILE_PATH}}`**: Current file path.
+- **`{{FILE_SYNTAX}}`**: Current file's language.
+- **`{{FILE_CONTENT}}`**: Entire document.
+- **`{{LINES_BEFORE_CURRENT}}`**: Code before the line.
+- **`{{TEXT_BEFORE_CURSOR}}`**: Text before cursor.
+- **`{{LINES_AFTER_CURRENT}}`**: Code after the line.
 
 ## Development
 
