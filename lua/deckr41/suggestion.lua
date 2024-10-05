@@ -23,7 +23,7 @@ local M = {
 
   max_width = 80,
   meta = {
-    bar_left = "${STATUS}",
+    bar_left = "{{STATUS}}",
     bar_right = "",
   },
 }
