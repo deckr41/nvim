@@ -34,8 +34,8 @@ local state = {
 --- @field templace_rc_path string
 local M = {
   default_rc_path = FSUtils.get_plugin_path() .. "/.d41rc",
-  rc_schema_path = FSUtils.get_plugin_path() .. "/.d41rc-schema.json",
-  templace_rc_path = FSUtils.get_plugin_path() .. "/.d41rc-template.json",
+  rc_schema_path = FSUtils.get_plugin_path() .. "/.deckr41/schemas/agent.json",
+  templace_rc_path = FSUtils.get_plugin_path() .. "/.deckr41/templates/.d41rc",
 }
 
 --- Load commands from a single .d41rc file

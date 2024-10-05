@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "Configuration file for customizing AI behavior per project.",
+  "properties": {
+    "root": {
+      "type": "boolean",
+      "description": "Indicates if this is the root configuration file, stopping further upward scanning for .d41rc files.",
+      "default": false
+    },
+    "agent": {
+      "$ref": "#/definitions/Agent"
+    },
+    "commands": {
+      "type": "array",
+      "description": "",
+      "items": {
+        "$ref": "#/definitions/Command"
+      }
+    }
+  },
+  "definitions": {
+    "Agent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "identity": {
+          "$ref": "#/definitions/Prompt"
+        },
+        "domain": {
+          "$ref": "#/definitions/Prompt"
+        },
+        "mission": {
+          "$ref": "#/definitions/Prompt"
+        }
+      },
+      "required": [
+        "id",
+        "identity",
+        "domain",
+        "mission"
+      ],
+      "additionalProperties": false
+    },
+    "Prompt": {
+      "description": "Prompts can either be strings or array of strings. Variable interpolation is supported using {{variable}} syntax.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Context": {
+      "description": "Additional context files or data for AI's reference.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "semantic-search": {
+                "$ref": "#/definitions/Prompt"
+              }
+            },
+            "required": [
+              "semantic-search"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "prompt": {
+                "$ref": "#/definitions/Prompt"
+              }
+            },
+            "required": [
+              "prompt"
+            ]
+          }
+        ]
+      }
+    },
+    "Command": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for the command. If id exists in a ",
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "properties": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "type": "string",
+                  "description": ""
+                },
+                "context": {
+                  "type": "string",
+                  "description": ""
+                }
+              },
+              "required": [
+                "request"
+              ]
+            }
+          }
+        },
+        "system_prompt": {
+          "$ref": "#/definitions/Prompt"
+        },
+        "context": {
+          "$ref": "#/definitions/Context"
+        },
+        "prompt": {
+          "$ref": "#/definitions/Prompt"
+        },
+        "temperature": {
+          "description": "Sampling temperature, controls randomness (0-1). Default 0.7. Higher values increase creativity, lower values increase determinism.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.7
+        },
+        "max_tokens": {
+          "description": "Maximum number of tokens for the response. Defaults to the model's maximum if not specified.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "commands"
+  ]
+}
