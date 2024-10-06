@@ -1,12 +1,10 @@
 --- @class NVimUtils
 local M = {}
 
---- @class AddKeymapOpts
+--- @class AddKeymapOpts: vim.api.keyset.keymap
 --- @field mode string
 --- @field action function
---- @field nowait? boolean
---- @field noremap? boolean
---- @field silent? boolean
+--- @field buf_id? integer
 
 --- Sets a global |mapping| for the given mode.
 --- Wrapper over `vim.api.nvim_set_keymap` with the followind defautls:
@@ -17,78 +15,73 @@ local M = {}
 M.add_keymap = function(shortcut, opts)
   local action = opts.action
   local mode = opts.mode
+  local buf_id = opts.buf_id
 
-  -- `nvim_set_keymap` does not recognize them and throws
+  -- Remove `mode`, `buf_id` and `action` to prevent errors, as 'nvim_set_keymap'
+  -- doesn't recognize them
   opts.mode = nil
+  opts.buf_id = nil
   opts.action = nil
 
-  vim.api.nvim_set_keymap(
-    mode,
-    shortcut,
-    "",
-    vim.tbl_deep_extend("force", {
-      nowait = false,
-      noremap = true,
-      silent = true,
-      callback = action,
-    }, opts)
-  )
-end
+  --- @type vim.api.keyset.keymap
+  local keymap_opts = vim.tbl_extend("force", {
+    nowait = false,
+    noremap = true,
+    silent = true,
+    callback = action,
+  }, opts)
 
---- @class AddKeymapsOpts
---- @field buf_id? integer
---- @field mode? string
---- @field nowait? boolean
---- @field noremap? boolean
---- @field silent? boolean
-
---- Add multiple keymaps
---- @param mappings table<string, function>
---- @param opts? AddKeymapsOpts
-M.add_keymaps = function(mappings, opts)
-  opts = opts or {}
-  for shortcut, action in pairs(mappings) do
-    if opts.buf_id then
-      vim.api.nvim_buf_set_keymap(opts.buf_id, opts.mode or "", shortcut, "", {
-        nowait = opts.nowait or false,
-        noremap = opts.noremap or true,
-        silent = opts.silent or true,
-        callback = action,
-      })
-    else
-      vim.api.nvim_set_keymap(opts.mode or "n", shortcut, "", {
-        nowait = opts.nowait or false,
-        noremap = opts.noremap or true,
-        silent = opts.silent or true,
-        callback = action,
-      })
-    end
+  if buf_id then
+    vim.api.nvim_buf_set_keymap(buf_id, mode, shortcut, "", keymap_opts)
+  else
+    vim.api.nvim_set_keymap(mode, shortcut, "", keymap_opts)
   end
 end
 
---- @class AddCommandOpts
---- @field action function
---- @field nargs? number
---- @field complete? function
---- @field desc? string
---- @field force? boolean
---- @field bang? boolean
+--- @class AddKeymapsOpts: vim.api.keyset.keymap
+--- @field mode string
+--- @field buf_id? integer
+
+--- Set multiple global `mapping` for the given mode.
+--- Wrapper over `vim.api.nvim_set_keymap`, or `nvim_buf_set_keymap`
+--- if `opts.buf_id` is set, with followin defaults:
+---  `nowait` = false
+---  `noremap` = false
+---  `silent` = true
+--- @param mappings table<string, function>
+--- @param opts? AddKeymapsOpts
+M.add_keymaps = function(mappings, opts)
+  for shortcut, action in pairs(mappings) do
+    M.add_keymap(
+      shortcut,
+      vim.tbl_extend("force", opts or {}, {
+        action = action,
+      })
+    )
+  end
+end
+
+---@class AddCommandOpts: vim.api.keyset.user_command
+---@field action function
 
 --- Creates a global |user-commands| command.
---- Wrapper over `vim.api.nvim_create_user_command` with
+--- Wrapper over `vim.api.nvim_create_user_command` with following defaults:
 ---  `nargs` = 0
 ---  `force` = false
 ---  `bang` = false
+--- @param name string
 --- @param opts AddCommandOpts
 M.add_command = function(name, opts)
   local action = opts.action
-  -- `nvim_create_user_command` does not recognize and throws
+
+  -- Remove `action` to prevent errors, as 'nvim_create_user_command'
+  -- doesn't recognize it
   opts.action = nil
 
   vim.api.nvim_create_user_command(
     name,
     action,
-    vim.tbl_deep_extend("force", opts, {
+    vim.tbl_deep_extend("force", opts or {}, {
       nargs = 0,
       force = false,
       bang = false,
@@ -102,7 +95,7 @@ end
 --- @param options table<string, any>
 M.set_buf_options = function(buf_id, options)
   for option, value in pairs(options) do
-    vim.api.nvim_buf_set_option(buf_id, option, value)
+    vim.api.nvim_set_option_value(option, value, { buf = buf_id })
   end
 end
 
@@ -112,7 +105,7 @@ end
 --- @param options table<string, any>
 M.set_win_options = function(win_id, options)
   for option, value in pairs(options) do
-    vim.api.nvim_win_set_option(win_id, option, value)
+    vim.api.nvim_set_option_value(option, value, { win = win_id })
   end
 end
 
@@ -132,7 +125,7 @@ M.is_win_valid = function(win_id)
   return win_id ~= nil and vim.api.nvim_win_is_valid(win_id)
 end
 
---- Create and set up a buffer
+--- Create a scratch, throwaway, buffer.
 --- @param opts table
 --- @return integer buf_id
 M.create_scratch_buffer = function(opts)
