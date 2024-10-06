@@ -1,5 +1,15 @@
+local Logger = require("deckr41.utils.logger")
 local NVimUtils = require("deckr41.utils.nvim")
 local TableUtils = require("deckr41.utils.table")
+
+--- Custom highlight style
+--- Define your highlight group using already defined theme color
+local string_hl_group =
+  vim.api.nvim_get_hl(0, { name = "String", link = false })
+
+vim.api.nvim_set_hl(0, "D41SelectUISelected", {
+  fg = string_hl_group.fg or "#00FF00",
+})
 
 --- @class SelectUIItem
 --- @field id string
@@ -31,9 +41,12 @@ end
 --- @param config SelectUIConfig
 --- @param state SelectUIState
 local render = function(config, state)
-  if not NVimUtils.is_buf_valid(state.buf_id) then return end
+  if not NVimUtils.is_buf_valid(state.buf_id) then
+    Logger.error("Buffer ID is invalid", { buf_id = state.buf_id })
+    return
+  end
 
-  vim.api.nvim_buf_set_option(state.buf_id, "modifiable", true)
+  vim.api.nvim_set_option_value("modifiable", true, { buf = state.buf_id })
   vim.api.nvim_buf_set_lines(state.buf_id, 0, -1, false, {})
 
   for idx, item in ipairs(state.items) do
@@ -77,7 +90,7 @@ local render = function(config, state)
   })
 
   -- Freeze it back after updating the content
-  vim.api.nvim_buf_set_option(state.buf_id, "modifiable", false)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = state.buf_id })
 
   -- Set cursor to the current item position
   vim.api.nvim_win_set_cursor(state.win_id, { state.cursor_pos, 0 })
@@ -161,16 +174,15 @@ end
 
 --- Build a new select UI instance
 --- @param opts SelectUIBuildOpts
---- @return SelectUIInstance
+--- @return SelectUIInstance|nil
 SelectUI.build = function(opts)
-  --- Custom highlight style
-  --- Define your highlight group using the retrieved colors
-  local string_hl_group =
-    vim.api.nvim_get_hl(0, { name = "String", link = false })
-
-  vim.api.nvim_set_hl(0, "D41SelectUISelected", {
-    fg = string_hl_group.fg or "#00FF00",
-  })
+  if not opts.items or type(opts.items) ~= "table" then
+    Logger.error(
+      "Cannot create instance with invalid items parameter",
+      { items = opts.items }
+    )
+    return
+  end
 
   --- @class SelectUIInstance
   local instance = {}
@@ -218,9 +230,18 @@ SelectUI.build = function(opts)
   move("down")
 
   --- Open the select UI
-  instance.open = function()
-    if NVimUtils.is_win_valid(state.win_id) then return end
-    if #state.items == 0 then return end
+  instance.open = vim.schedule_wrap(function()
+    if NVimUtils.is_win_valid(state.win_id) then
+      Logger.warn("SelectUI already open", { win_id = state.win_id })
+      return
+    end
+    if #state.items == 0 then
+      Logger.warn(
+        "SelectUI cannot be opened with no items",
+        { items = state.items }
+      )
+      return
+    end
 
     -- Create a new buffer
     state.buf_id = NVimUtils.create_scratch_buffer({
@@ -281,30 +302,32 @@ SelectUI.build = function(opts)
     })
 
     render(config, state)
-  end
+  end)
 
   --- Hide the select UI
-  instance.hide = function()
+  instance.hide = vim.schedule_wrap(function()
     if NVimUtils.is_win_valid(state.win_id) then
       vim.api.nvim_win_close(state.win_id, true)
       state.win_id = nil
       state.buf_id = nil
     end
-  end
+  end)
 
   --- Refresh the select UI with new items
   --- @param groups SelectUIItemGroup[]
-  instance.refresh = function(groups)
+  instance.refresh = vim.schedule_wrap(function(groups)
     state.items = groups and build_items_from_groups(groups) or state.items
     render(config, state)
-  end
+  end)
 
   --- Handle item selection
   instance.select_item = function()
     local item = state.items[state.cursor_pos]
     if not item or item.is_separator then return end
 
-    if config.on_change then config.on_change(instance, item) end
+    if config.on_change then
+      vim.schedule(function() config.on_change(instance, item) end)
+    end
     if config.should_close_on_change then instance.hide() end
   end
 
