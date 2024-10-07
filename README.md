@@ -27,7 +27,7 @@ and composing Pure Agents to build features across your entire codebase.
 
 - [ ] Implement tool support
 - [ ] **Run commands** in **NORMAL** and **VISUAL** modes
-- [x] **Reload** `.d41rc` files **on-change**
+- [x] **Reload commands** on `.d41rc` file change
 - [x] Get **auto-completion** suggestions in **INSERT** mode
 - [x] **Switch at run-time** backend, model and keyboard modes
 - [x] Implement `easy-does-it` and `r-for-rocket` **keyboard modes**
@@ -79,7 +79,7 @@ Define prompts with context, variable interpolation, model parameter control
 ### :brain: Pure Agents
 
 Encapsulate domain-specific knowledge using 📂 collocated `.d41rc` files,
-acting like pure functions with clear domains and no side effects.
+acting like pure functions with clear boundaries and responsibilities.
 
 <details>
 <summary>Example of a Pure Agent `.d41rc` file, responsible for a React UI button component:</summary>
