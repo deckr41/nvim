@@ -2,8 +2,7 @@
 local M = {}
 
 --- @class AddKeymapOpts: vim.api.keyset.keymap
---- @field mode string
---- @field action function
+--- @field modes table<string, fun(mode: string)|string>
 --- @field buf_id? integer
 
 --- Sets a global |mapping| for the given mode.
@@ -11,35 +10,48 @@ local M = {}
 ---  `nowait` = false
 ---  `noremap` = true
 ---  `silent` = true
+--- @param shortcut string
 --- @param opts AddKeymapOpts
 M.add_keymap = function(shortcut, opts)
-  local action = opts.action
-  local mode = opts.mode
+  local modes = opts.modes
   local buf_id = opts.buf_id
 
-  -- Remove `mode`, `buf_id` and `action` to prevent errors, as 'nvim_set_keymap'
+  -- Remove `modes`, `buf_id` and `action` to prevent errors, as 'nvim_set_keymap'
   -- doesn't recognize them
-  opts.mode = nil
+  opts.modes = nil
   opts.buf_id = nil
-  opts.action = nil
 
-  --- @type vim.api.keyset.keymap
-  local keymap_opts = vim.tbl_extend("force", {
-    nowait = false,
-    noremap = true,
-    silent = true,
-    callback = action,
-  }, opts)
+  for mode, action in pairs(modes) do
+    --- @type vim.api.keyset.keymap
+    local keymap_opts = vim.tbl_extend("force", {
+      nowait = false,
+      noremap = true,
+      silent = true,
+      callback = type(action) == "function" and function() action(mode) end
+        or nil,
+    }, opts)
 
-  if buf_id then
-    vim.api.nvim_buf_set_keymap(buf_id, mode, shortcut, "", keymap_opts)
-  else
-    vim.api.nvim_set_keymap(mode, shortcut, "", keymap_opts)
+    if buf_id then
+      vim.api.nvim_buf_set_keymap(
+        buf_id,
+        mode,
+        shortcut,
+        type(action) == "string" and action or "",
+        keymap_opts
+      )
+    else
+      vim.api.nvim_set_keymap(
+        mode,
+        shortcut,
+        type(action) == "string" and action or "",
+        keymap_opts
+      )
+    end
   end
 end
 
 --- @class AddKeymapsOpts: vim.api.keyset.keymap
---- @field mode string
+--- @field modes table<"n"|"i"|"v", table<string, fun(mode: string)|string>>>
 --- @field buf_id? integer
 
 --- Set multiple global `mapping` for the given mode.
@@ -48,16 +60,17 @@ end
 ---  `nowait` = false
 ---  `noremap` = false
 ---  `silent` = true
---- @param mappings table<string, function>
---- @param opts? AddKeymapsOpts
-M.add_keymaps = function(mappings, opts)
-  for shortcut, action in pairs(mappings) do
-    M.add_keymap(
-      shortcut,
-      vim.tbl_extend("force", opts or {}, {
-        action = action,
-      })
-    )
+--- @param opts AddKeymapsOpts
+M.add_keymaps = function(opts)
+  for mode, shortcuts in pairs(opts.modes) do
+    for shortcut, action in pairs(shortcuts) do
+      M.add_keymap(
+        shortcut,
+        vim.tbl_extend("force", opts or {}, {
+          modes = { [mode] = action },
+        })
+      )
+    end
   end
 end
 
