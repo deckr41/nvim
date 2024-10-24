@@ -1,17 +1,17 @@
---- @class TableUtils
+--- @class TableUtils Domain agnostic table related pure primitives
 local M = {}
 
---- Extract the values from a dictionary (named table) and return them as
---- an array (indexed table)
+--- Extract the values from a dictionary (named table) or array (indexed table)
+--- and return them as an array (indexed table)
 --- @generic T
---- @param dict table<any, T>
+--- @param table T[]|table<any, T>
 --- @return T[]
-M.values = function(dict)
-  local result_array = {}
-  for _, value in pairs(dict) do
-    result_array[#result_array + 1] = value -- More efficient than table.insert in a loop
+M.values = function(table)
+  local result = {}
+  for _, value in pairs(table) do
+    result[#result + 1] = value
   end
-  return result_array
+  return result
 end
 
 --- Concatenate arrays (indexed tables) with a decider function
@@ -100,12 +100,12 @@ end
 --- Map over an array (indexed table) and transform its items
 --- @generic K, V, M
 --- @param array table<K, V>
---- @param func fun(item: V, index: K): M
+--- @param func fun(item: V, original_key: K): M
 --- @return M[]
 M.imap = function(array, func)
   local result_array = {}
-  for index, item in ipairs(array) do
-    result_array[index] = func(item, index)
+  for original_key, item in pairs(array) do
+    result_array[#result_array + 1] = func(item, original_key)
   end
   return result_array
 end
@@ -113,20 +113,112 @@ end
 --- Calculate the max value of an array (indexed table) after applying a
 --- `to_value_fn` function.
 --- If the array is `nil` or empty, returns `nil`.
---- Skip an element by returning `nil` in `to_value_fn`.
+--- Skip elements by returning `nil` in `to_value_fn`.
 --- @generic T
---- @param array T[]
+--- @param table table<any, T>
 --- @param to_value_fn fun(item: T): number|nil
 --- @return integer|nil
-M.max_with = function(array, to_value_fn)
+M.max_with = function(table, to_value_fn)
   local max_value = nil
-  for _, item in ipairs(array) do
+  for _, item in pairs(table) do
     local value = to_value_fn(item)
     if value ~= nil then
       if max_value == nil or value > max_value then max_value = value end
     end
   end
   return max_value
+end
+
+---@generic T
+---@param array T[]
+---@param predicate fun(item: T): boolean
+---@return T[]
+M.filter = function(array, predicate)
+  local result_array = {}
+  for _, value in ipairs(array) do
+    if predicate(value) then result_array[#result_array + 1] = value end
+  end
+  return result_array
+end
+
+---@generic T
+---@param table T[]|table<string, T>
+---@param predicate fun(item: T): boolean
+---@return T|nil
+M.find = function(table, predicate)
+  for _, value in pairs(table) do
+    if predicate(value) then return value end
+  end
+  return nil
+end
+
+--- Concatenate multiple arrays and table into one, left to right
+--- @generic T
+--- @param ... T[]|table<string, T>
+--- @return T[]
+M.concat = function(...)
+  local result = {}
+  local result_index = 1
+
+  for _, array in pairs({ ... }) do
+    for _, value in pairs(array) do
+      result[result_index] = value
+      result_index = result_index + 1
+    end
+  end
+
+  return result
+end
+
+--- Get the number of elements in a table
+--- @generic T
+--- @param table T[]|table<string, T>?
+--- @return integer
+M.size = function(table)
+  local size = 0
+  for _, _ in pairs(table or {}) do
+    size = size + 1
+  end
+  return size
+end
+
+--- @generic T, K, V
+--- @param table table<K, V>
+--- @param reducer fun(acc: T, value: V, key: K): T
+--- @param initial_acc T
+--- @return T
+M.reduce = function(table, reducer, initial_acc)
+  local result = initial_acc
+  for key, value in pairs(table) do
+    result = reducer(result, value, key)
+  end
+  return result
+end
+
+--- Check if sub_table is found within another table (dictionaries only)
+--- @param sub_dict table<string, any> Table to match
+--- @param dict table<string, any> Table to check against
+--- @return boolean: True if `sub_table` matches sub_table
+M.is_match = function(sub_dict, dict)
+  if type(sub_dict) ~= "table" or type(dict) ~= "table" then return false end
+  for k, v in pairs(sub_dict) do
+    if dict[k] ~= v then return false end
+  end
+  return true
+end
+
+--- Test if at least one element in `table` matches the `sub_dict`
+--- @param sub_dict table<string, any> Table to match
+--- @param table table<string, table>|table[] Source table to iterate over
+--- @return boolean: True if at least one element passes, otherwise false
+M.any_with = function(sub_dict, table)
+  if type(table) ~= "table" then return false end
+  for _, element in pairs(table) do
+    if type(element) == "table" and M.is_match(sub_dict, element) then
+      return true
+    end
+  end
+  return false
 end
 
 return M
