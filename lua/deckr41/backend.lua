@@ -1,4 +1,4 @@
-local Logger = require("deckr41.utils.logger")
+local Logger = require("deckr41.utils.loggr")("Backend")
 local TableUtils = require("deckr41.utils.table")
 local curl = require("plenary.curl")
 
@@ -12,7 +12,7 @@ local M = {}
 --- @field url string
 --- @field api_key ?string
 --- @field default_model string
---- @field available_models table<string, { max_tokens: integer }>
+--- @field available_models table<string, { max_output_tokens: integer }>
 --- @field temperature number
 
 --- @alias BackendServices table<BackendServiceName, BackendService>
@@ -28,12 +28,12 @@ local config = {
     available_models = {
       -- High-intelligence flagship model for complex, multi-step tasks.
       -- GPT-4o is cheaper and faster than GPT-4 Turbo.
-      ["gpt-4o"] = { max_tokens = 4096 },
+      ["gpt-4o"] = { max_output_tokens = 4096 },
       -- Latest snapshot that supports Structured Outputs
-      ["gpt-4o-2024-08-06"] = { max_tokens = 16384 },
+      ["gpt-4o-2024-08-06"] = { max_output_tokens = 16384 },
       -- Affordable and intelligent small model for fast, lightweight tasks.
       -- GPT-4o mini is cheaper and more capable than GPT-3.5 Turbo.
-      ["gpt-4o-mini"] = { max_tokens = 16384 },
+      ["gpt-4o-mini"] = { max_output_tokens = 16384 },
     },
     temperature = 0.2,
   },
@@ -41,9 +41,10 @@ local config = {
     id = "anthropic",
     url = "https://api.anthropic.com/v1/messages",
     api_key = os.getenv("ANTHROPIC_API_KEY"),
-    default_model = "claude-3-5-sonnet-20240620",
+    default_model = "claude-3-5-sonnet-latest",
     available_models = {
-      ["claude-3-5-sonnet-20240620"] = { max_tokens = 1024 },
+      ["claude-3-5-sonnet-latest"] = { max_output_tokens = 8192 },
+      ["claude-3-haiku"] = { max_output_tokens = 4096 },
     },
     temperature = 0.2,
   },
@@ -144,7 +145,7 @@ end
 --- @field system_prompt string
 --- @field messages { role: string, content: string }[]
 --- @field temperature number
---- @field max_tokens integer
+--- @field max_output_tokens integer
 
 -- Prepare request payload OpenAI request
 ---@param backend BackendService
@@ -166,7 +167,7 @@ local prepare_openai_request = function(backend, opts)
     model = opts.model,
     temperature = opts.temperature,
     stream = true,
-    max_tokens = opts.max_tokens,
+    max_tokens = opts.max_output_tokens,
   }
 
   return backend.url, headers, body
@@ -177,7 +178,7 @@ end
 --- @field system_prompt string
 --- @field messages { role: string, content: string }[]
 --- @field temperature number
---- @field max_tokens integer
+--- @field max_output_tokens integer
 
 -- Prepare request payload Anthropic request
 ---@param backend BackendService
@@ -198,26 +199,16 @@ local prepare_anthropic_request = function(backend, opts)
     model = opts.model,
     temperature = opts.temperature,
     stream = true,
-    max_tokens = opts.max_tokens,
+    max_tokens = opts.max_output_tokens,
   }
 
   return backend.url, headers, body
 end
 
---- @class BackendAskOpts
---- @field max_tokens ?integer
---- @field temperature ?number
---- @field system_prompt ?string
---- @field messages { role: string, content: string }[]
---- @field on_start ?fun(config: { backend_name: string, model: string, temperature: number }): nil
---- @field on_data ?fun(chunk: string): nil
---- @field on_done ?fun(response: string, http_status: number): nil
---- @field on_error ?fun(response: { message: string, stderr: string, exit?: number}): nil
-
 --- @class PrepareRequestOpts
 --- @field backend BackendService
 --- @field model_name string
---- @field max_tokens ?integer
+--- @field max_output_tokens ?integer
 --- @field temperature ?number
 --- @field system_prompt ?string
 --- @field messages { role: string, content: string }[]
@@ -230,7 +221,8 @@ local prepare_request = function(opts)
   local backend = opts.backend
   local model = backend.available_models[opts.model_name]
   local temperature = opts.temperature or backend.temperature
-  local max_tokens = math.min(opts.max_tokens or math.huge, model.max_tokens)
+  local max_output_tokens =
+    math.min(opts.max_output_tokens or math.huge, model.max_output_tokens)
 
   if backend.id == "openai" then
     return prepare_openai_request(backend, {
@@ -238,7 +230,7 @@ local prepare_request = function(opts)
       system_prompt = opts.system_prompt or "",
       messages = opts.messages,
       temperature = temperature,
-      max_tokens = max_tokens,
+      max_output_tokens = max_output_tokens,
     })
   end
 
@@ -247,7 +239,7 @@ local prepare_request = function(opts)
     system_prompt = opts.system_prompt or "",
     messages = opts.messages,
     temperature = temperature,
-    max_tokens = max_tokens,
+    max_output_tokens = max_output_tokens,
   })
 end
 
@@ -279,13 +271,28 @@ local extract_text_from_stream_data = function(backend_name, data_chunk)
   return result or ""
 end
 
+--- @alias BackendOnStartCallback fun(config: { backend_name: string, model: string, temperature: number }): nil
+--- @alias BackendOnDataCallback fun(chunk: string): nil
+--- @alias BackendOnDoneCallback fun(response: string, http_status: number): nil
+--- @alias BackendOnErrorCallback fun(response: { message: string, stderr: string, exit?: number }): nil
+
+--- @class BackendAskOpts
+--- @field max_output_tokens ?integer
+--- @field temperature ?number
+--- @field system_prompt ?string
+--- @field messages { role: string, content: string }[]
+--- @field on_start ?BackendOnStartCallback
+--- @field on_data ?BackendOnDataCallback
+--- @field on_done ?BackendOnDoneCallback
+--- @field on_error ?BackendOnErrorCallback
+
 --- @param opts BackendAskOpts
 --- @return Job
 M.ask = function(opts)
   local url, headers, body = prepare_request({
     backend = config[state.active_backend],
     model_name = state.active_model,
-    max_tokens = opts.max_tokens,
+    max_output_tokens = opts.max_output_tokens,
     temperature = opts.temperature,
     system_prompt = opts.system_prompt,
     messages = opts.messages,
