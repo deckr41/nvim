@@ -235,7 +235,6 @@ return M
 
 ### Domain Modules (Stateful)
 
-
 Stateful modules maintain internal `state` and user `config` tables, similar to
 singletons. When designing such modules:
 
@@ -285,9 +284,12 @@ return M
 
 ### Instantiable Domain Modules
 
-Instantiable modules create independent instances using functions and closures, avoiding inheritance and metatables. 
+Instantiable modules create independent instances using functions and closures,
+avoiding inheritance and metatables. 
 
-Factory functions generate objects, encapsulating `state` and `config` within closures for privacy. Methods are directly attached to the instance, ensuring isolated state management.
+Factory functions generate objects, encapsulating `state` and `config` within
+closures for privacy. Methods are directly attached to the instance, ensuring
+isolated state management.
 
 - **Factory Functions**: Use functions that return new instances to create
   multiple independent objects.
@@ -338,6 +340,147 @@ M.build = function(opts)
   end
 
   return instance
+end
+
+return M
+```
+
+### Nvim UI components
+
+```lua
+--- @class TextareaUI
+local M = {}
+
+--- @class TextareaUIConfig
+--- @field value string? The initial value for the textarea
+--- @field filetype string? The filetype for syntax highlighting
+--- @field win_opts vim.api.keyset.win_config? Nvim window options
+
+--- Create a new TextareaUI instance.
+--- @param user_config TextareaUIConfig?
+--- @return SuggestionUIInstance
+function M.build(user_config)
+
+  --
+  -- Internal state representation. 
+  --
+  -- `config` and `state` have the same purpose: `F(state, config) = UI`
+  -- The difference between `config` and `state` is that `config` is public and 
+  -- the user can interact with the UI component through the `update` method,
+  -- while `state` is private and keeps internal housekeeping data.
+  --
+
+  --- @class TextareaUIInstance
+  local instance = {}
+
+  --- @type TextareaUIConfig
+  local config = {
+    value = "",
+    filetype = "markdown",
+    win_opts = {
+      width = 80,
+      height = 25,
+      style = "minimal",
+      focusable = false,
+      border = "rounded",
+    },
+  }
+
+  -- Merge user options into the default config
+  config = vim.tbl_deep_extend("force", config, user_config or {})
+
+  --- @class TextareaUIState
+  local state = {
+    lines = [], --- @type string[]
+    win_id = nil, --- @type integer?
+    buf_id = nil, --- @type integer?
+  }
+
+  --
+  -- Init logic
+  --
+
+  state.lines = vim.split(config.value, "\n")
+
+  --
+  -- Private methods
+  --
+
+  --- Internal render function for reflecting state changes in the UI
+  local function render()
+    if not state.win_id or not state.buf_id then return end
+
+    -- Update window configuration
+    vim.api.nvim_win_set_config(state.win_id, config.win_opts)
+
+    -- Update buffer content
+    vim.api.nvim_buf_set_lines(state.buf_id, 0, -1, false, state.lines)
+
+    -- Update filetype if changed
+    local current_filetype =
+      vim.api.nvim_get_option_value("syntax", { buf = state.buf_id })
+    if config.filetype ~= current_filetype then
+      NVimUtils.set_buf_options(state.buf_id, {
+        filetype = config.filetype,
+      })
+    end
+  end
+
+  --
+  -- Public methods
+  --
+
+  --- 
+  --- @param new_config TextareaUIConfig
+  function instance.update(new_config)
+    config = vim.tbl_deep_extend("force", config, new_config)
+    state.lines = vim.split(config.value, "\n")
+    render()
+  end
+
+  --- Show the Textarea window.
+  function instance.show()
+    if state.win_id and state.buf_id then return end
+    if not NVimUtils.is_buf_valid(state.buf_id) then
+      state.buf_id = vim.api.nvim_create_buf(false, true)
+    end
+    if not NVimUtils.is_win_valid(state.win_id) then
+      state.win_id = vim.api.nvim_open_win(
+        state.buf_id,
+        false,
+        vim.tbl_deep_extend("force", config.win_opts or {}, {
+          noautocmd = true,
+        })
+      )
+    end
+    render()
+  end
+
+  --- Close the Textarea window and destroy vim resources.
+  function instance.hide()
+    vim.api.nvim_win_close(state.win_id, true)
+    vim.api.nvim_buf_delete(state.buf_id, { force = true })
+    state.win_id = nil
+    state.buf_id = nil
+  end
+
+  --- Return the textarea contents as array.
+  --- @return string[]
+  function instance.get_lines()
+    return state.lines 
+  end
+
+  --- Return the textarea contents as string.
+  --- @return string
+  function instance.get_text()
+    return table.concat(state.lines, "\n")
+  end
+
+  --- Check if the component is visible.
+  --- @return boolean
+  function instance.is_visible() 
+    return state.win_id and state.buf_id 
+  end
 end
 
 return M
