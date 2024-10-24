@@ -15,7 +15,7 @@ boundaries.
 At a higher level, your projects become **Higher-Order Agents**, orchestrating
 and composing Pure Agents to build features across your entire codebase.
 
-![On demand, one-line autocompletion with Anthropic](docs/screenshot_finish-line.png)
+![On demand, one-line autocompletion with Anthropic](docs/static/screenshot_finish-line.png)
 
 ## Progress
 
@@ -25,8 +25,16 @@ and composing Pure Agents to build features across your entire codebase.
 > The plugin is functional but many advanced capabilities are still in
 > progress.
 
-- [ ] Implement tool support
-- [ ] **Run commands** in **NORMAL** and **VISUAL** modes
+- [ ] **Semantic search** project files (generate, store and keep embeddings
+  synced)
+- [ ] Create **fine-tuned models** based on **specific project files** (code
+  guidelines, specific code sections that are more polished and serve as
+  examples for others, specific project specific data structures and patterns)
+- [ ] **Background command** or Agent **task** + LSP integration
+- [ ] Implement **tool support**
+- [ ] **Enhance UI**: support select type params, add text prompt, allow split
+  buffer intead of float
+- [x] **Run commands** in **NORMAL** and **VISUAL** modes
 - [x] **Reload commands** on `.d41rc` file change
 - [x] Get **auto-completion** suggestions in **INSERT** mode
 - [x] **Switch at run-time** backend, model and keyboard modes
@@ -48,7 +56,31 @@ Define prompts with context, variable interpolation, model parameter control
   "commands": [
     {
       "id": "explain-code",
-      "system_prompt": "You are the best explainer of {{FILE_SYNTAX}} code there is, the greatest meaning and intention unraveller. You are a mind reader and have deep insight into what the user wanted to achieve.",
+      "parameters": {
+        "depth": {
+          "type": "select",
+          "label": "How deep should the explanation go?",
+          "default": "overview",
+          "options": [
+            {
+              "label": "Overview",
+              "value": "overview"
+            },
+            {
+              "label": "In-Depth",
+              "value": "in-depth"
+            }
+          ]
+        }
+      },
+      "system_prompt": [
+        "You are an experienced {{FILE_SYNTAX}} programmer and an exceptional teacher. Your mission is to explain the code to the user clearly and concisely, ensuring they understand both what the code does and why it works that way.",
+        "You follow the coding standards, emphasizing clarity, brevity, and simplicity. You explain complex concepts in a way that even a beginner can understand, while also providing deeper insights for advanced users.",
+        "",
+        "## Purpose",
+        "You will explain the selected code in {{PARAMETERS.depth}} detail, focusing on making the code easy to understand. Be clear, concise, and highlight how the code adheres to best practices, or suggest improvements if necessary.",
+        "Take a deep breath and guide the user through the flow and logic of the code, ensuring they see not just the 'what', but also the 'why' behind it."
+      ],
       "context": [
         {
           "prompt": [
@@ -61,15 +93,19 @@ Define prompts with context, variable interpolation, model parameter control
         }
       ],
       "prompt": [
-        "Explain the following code focusing on its purpose, structure, and any notable patterns or techniques used:",
+        "## Code to Explain",
         "",
-        "{{FILE_PATH}}",
-        "```{{FILE_SYNTAX}}",
-        "{{FULL_TEXT}}",
-        "```"
+        "{{TEXT}}",
+        "",
+        "## Explanation Depth",
+        "The user has requested a(n) {{PARAMETERS.depth}} explanation.",
+        "",
+        "## Important",
+        "Provide a clear, structured explanation. If the user asks for an overview, focus on the big picture. If they request an in-depth explanation, dive into the details of how the code works, including edge cases or performance considerations."
       ],
-      "temperature": 0.2,
-      "max_tokens": 500
+      "temperature": 0.3,
+      "on_accept": "insert",
+      "response_syntax": "markdown"
     }
   ]
 }
@@ -282,7 +318,7 @@ Extend AI with custom tools for tasks like computations and API interactions.
       "prompt": [
         "Calculate the following expression:",
         "",
-        "{{FULL_TEXT}}"
+        "{{TEXT}}"
       ],
       "temperature": 0,
       "max_tokens": 50
@@ -477,7 +513,7 @@ Each `.d41rc` is a JSON object containing commands:
         "Now. Take a deep breath. Each word written unfolds the answer."
       ],
       "prompt": [
-        "{{FULL_TEXT}}"
+        "{{TEXT}}"
       ],
       "temperature": 0.7,
       "max_tokens": 100
@@ -486,7 +522,7 @@ Each `.d41rc` is a JSON object containing commands:
 }
 ```
 
-Refer to the schema definition [here](.d41rc-schema.json).
+Refer to the schema definition [here](schemas/rc.json).
 
 ### Variable Interpolation
 
@@ -506,7 +542,7 @@ The `system_prompt` and `prompt` fields support dynamic variable interpolation:
 The plugin's architecture is modular, with each component responsible for a
 clear, isolated piece of domain.
 
-![Plugin code overview diagram](docs/code-overview.png)
+![Plugin code overview diagram](docs/static/code-overview.png)
 
 ## Credits
 
