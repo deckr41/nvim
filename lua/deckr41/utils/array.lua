@@ -58,4 +58,38 @@ M.concat = function(array_a, array_b)
   return result_array
 end
 
+--- Reverse the order of items in an array (indexed table).
+--- @generic T
+--- @param array T[]
+--- @param opts? { should_mutate?: boolean }
+--- @return T[]
+M.reverse = function(array, opts)
+  opts = opts or {}
+  local size = #array
+
+  if opts.should_mutate then
+    for i = 1, math.floor(size / 2) do
+      array[i], array[size - i + 1] = array[size - i + 1], array[i]
+    end
+    return array
+  else
+    local new_array = {}
+    for i = 1, size, 1 do
+      new_array[i] = array[size - i + 1]
+    end
+    return new_array
+  end
+end
+
+--- Reverse the order of items in an array (indexed table).
+--- @generic T
+--- @param array T[]
+--- @return integer|nil
+M.get_index = function(item, array)
+  for index, value in ipairs(array) do
+    if value == item then return index end
+  end
+  return nil
+end
+
 return M
