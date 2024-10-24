@@ -18,6 +18,7 @@
   },
   "diagnostics": {
     "unusedLocalExclude": [
+      "Logger",
       "_*"
     ]
   }
