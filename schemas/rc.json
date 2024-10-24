@@ -8,6 +8,21 @@
       "description": "Indicates if this is the root configuration file, stopping further upward scanning for .d41rc files.",
       "default": false
     },
+    "project": {
+      "type": "object",
+      "properties": {
+        "icon": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "agent": {
       "$ref": "#/definitions/Agent"
     },
@@ -19,11 +34,14 @@
       }
     }
   },
+  "required": [
+    "commands"
+  ],
   "definitions": {
     "Agent": {
       "type": "object",
       "properties": {
-        "id": {
+        "name": {
           "type": "string"
         },
         "identity": {
@@ -37,7 +55,7 @@
         }
       },
       "required": [
-        "id",
+        "name",
         "identity",
         "domain",
         "mission"
@@ -91,15 +109,20 @@
     "Command": {
       "type": "object",
       "properties": {
-        "id": {
-          "description": "Unique identifier for the command. If id exists in a ",
+        "name": {
+          "description": "Unique identifier for the command.",
           "type": "string"
         },
         "parameters": {
+          "description": "Parameters for the command that must be provided by the user. The values can be interpolated in the 'system_prompt', 'context' and 'prompt' fields by using {{PARAMETERS.name}}.",
           "type": "object",
           "properties": {
             "type": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "textarea",
+                "input"
+              ]
             },
             "properties": {
               "type": "object",
@@ -139,16 +162,26 @@
           "description": "Maximum number of tokens for the response. Defaults to the model's maximum if not specified.",
           "type": "integer",
           "minimum": 1
+        },
+        "response_syntax": {
+          "description": "Syntax highlighting for the LLM response, eg. 'json', 'yaml', 'xml', 'html', 'markdown', 'text'. Defaults to the current buffer's filetype.",
+          "type": "string"
+        },
+        "on_accept": {
+          "description": "Action to perform when the LLM response is accepted. Default: 'insert', Allowed values: 'replace', 'insert'.",
+          "type": "string",
+          "enum": [
+            "replace",
+            "insert"
+          ],
+          "default": "insert"
         }
       },
       "required": [
-        "id",
+        "name",
         "prompt"
       ],
       "additionalProperties": false
     }
-  },
-  "required": [
-    "commands"
-  ]
+  }
 }
