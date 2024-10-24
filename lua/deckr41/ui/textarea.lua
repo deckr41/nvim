@@ -141,6 +141,7 @@ M.build = function(user_config)
 
   --- Build the meta bar for the textarea window.
   --- @return string meta_line The formatted meta line.
+  --- @return integer meta_width The visible width of the meta bar.
   local function build_meta_bar()
     local meta_left = config.meta.left or ""
     local meta_right = config.meta.right or ""
@@ -159,7 +160,8 @@ M.build = function(user_config)
       meta_left = table.concat(tab_names, " | ")
     end
 
-    return "%#deckr41Left# " .. meta_left .. " %=%#deckr41Right# " .. meta_right
+    return "%#deckr41Left# " .. meta_left .. " %=%#deckr41Right# " .. meta_right,
+      vim.fn.strdisplaywidth(meta_left .. meta_right) + 3
   end
 
   --- Get the contents of a tab.
@@ -214,10 +216,14 @@ M.build = function(user_config)
     local width, height = calculate_dimensions(lines)
 
     -- Build the meta bar and adjust width and height
-    local meta_bar_content = nil
     if config.meta.left or config.meta.right or state.has_multiple_tabs then
-      meta_bar_content = build_meta_bar()
-      width = math.max(width, vim.fn.strdisplaywidth(meta_bar_content))
+      local meta_bar_content, meta_bar_size = build_meta_bar()
+
+      NVimUtils.set_win_options(state.win_id, {
+        winbar = meta_bar_content or "",
+      })
+
+      width = math.max(width, meta_bar_size)
       height = height + 1
     end
 
@@ -235,10 +241,6 @@ M.build = function(user_config)
         title_pos = config.title and config.title_pos or nil,
       })
     )
-
-    NVimUtils.set_win_options(state.win_id, {
-      winbar = meta_bar_content or "",
-    })
 
     -- Set buffer content
     vim.api.nvim_buf_set_lines(state.buf_id, 0, -1, false, lines)
