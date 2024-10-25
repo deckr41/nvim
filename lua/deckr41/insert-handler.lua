@@ -4,6 +4,7 @@ local Logger = require("deckr41.utils.loggr")("InsertModeHandler")
 local NVimUtils = require("deckr41.utils.nvim")
 local Pinpointer = require("deckr41.utils.pinpointr")
 local SuggestionUI = require("deckr41.ui.suggestion")
+local WindowUtils = require("deckr41.utils.window")
 
 --- Domain imports
 local Commands = require("deckr41.commands")
@@ -65,7 +66,14 @@ local function is_command_running()
 end
 
 local function apply()
-  state.suggestion_ui.apply()
+  local pinpoint = Pinpointer.get()
+  WindowUtils.insert_text_at(state.suggestion_ui.get_text(), {
+    win_id = pinpoint.win_id,
+    cursor = pinpoint.cursor,
+    range = nil,
+    clear_ahead = true,
+  })
+
   state.suggestion_ui.hide()
   state.job = nil
 end

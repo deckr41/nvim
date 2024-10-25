@@ -180,21 +180,6 @@ function M.build(user_config)
     return state.textarea_ui and state.textarea_ui.is_visible() or false
   end
 
-  --- Apply the suggestion by inserting it at the cursor position.
-  function instance.apply()
-    if not instance.is_finished() or instance.is_empty() then return end
-
-    -- Insert text at cursor position
-    WindowUtils.insert_text_at(state.textarea_ui.get_text(), {
-      win_id = vim.api.nvim_get_current_win(),
-      cursor = vim.api.nvim_win_get_cursor(0),
-      range = nil,
-      clear_ahead = true,
-    })
-
-    instance.hide()
-  end
-
   --- Get the current text content of the suggestion.
   --- @return string
   function instance.get_text()
