@@ -1,6 +1,5 @@
 --- Utilities imports
 local NVimUtils = require("deckr41.utils.nvim")
-local Pinpointer = require("deckr41.utils.pinpointr")
 local SelectUI = require("deckr41.ui.select")
 local TableUtils = require("deckr41.utils.table")
 
@@ -61,42 +60,6 @@ M.setup = function(user_config)
   InsertModeHandler.setup({
     active_mode = user_config.active_mode,
     modes = user_config.modes or {},
-    on_command = function(name, ui)
-      local pinpoint = Pinpointer.take_snapshot()
-
-      ui.update({
-        status = "asking",
-        filetype = pinpoint.filetype,
-      })
-
-      return Commands.run({ name = name }, {
-        win_id = pinpoint.win_id,
-        cursor = pinpoint.cursor,
-        range = pinpoint.range,
-        on_start = function(cmd_config)
-          ui.update({
-            meta = string.format("%s / %s ", name, cmd_config.model),
-          })
-          ui.show()
-        end,
-        on_data = function(chunk)
-          if not chunk or chunk == "" then return end
-          ui.append_text(chunk)
-        end,
-        on_done = function(response, http_status)
-          if http_status >= 400 then ui.update({ value = response }) end
-          ui.update({ status = "done" })
-        end,
-        on_error = function(response)
-          -- 41 is the shutdown code used when the cursor moves. We only want
-          -- to fill and display the response if it's an OS or API error
-          if response and response.exit ~= 41 then
-            ui.append_text(response.message)
-          end
-          ui.update({ status = "done" })
-        end,
-      })
-    end,
   })
 
   --

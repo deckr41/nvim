@@ -1,7 +1,12 @@
+--- Utilities imports
 local FnUtils = require("deckr41.utils.fn")
 local Logger = require("deckr41.utils.loggr")("InsertModeHandler")
 local NVimUtils = require("deckr41.utils.nvim")
+local Pinpointer = require("deckr41.utils.pinpointr")
 local SuggestionUI = require("deckr41.ui.suggestion")
+
+--- Domain imports
+local Commands = require("deckr41.commands")
 
 --- @class InsertModeHandler
 local M = {}
@@ -73,9 +78,47 @@ local function refuse()
   state.suggestion_ui.hide()
 end
 
+local function run_command(name)
+  local pinpoint = Pinpointer.take_snapshot()
+
+  state.suggestion_ui.update({
+    status = "asking",
+    filetype = pinpoint.filetype,
+  })
+
+  return Commands.run({ name = name }, {
+    win_id = pinpoint.win_id,
+    cursor = pinpoint.cursor,
+    range = pinpoint.range,
+    on_start = function(cmd_config)
+      state.suggestion_ui.update({
+        meta = string.format("%s / %s ", name, cmd_config.model),
+      })
+      state.suggestion_ui.show()
+    end,
+    on_data = function(chunk)
+      if not chunk or chunk == "" then return end
+      state.suggestion_ui.append_text(chunk)
+    end,
+    on_done = function(response, http_status)
+      if http_status >= 400 then
+        state.suggestion_ui.update({ value = response })
+      end
+      state.suggestion_ui.update({ status = "done" })
+    end,
+    on_error = function(response)
+      -- 41 is the shutdown code used when the cursor moves. We only want
+      -- to fill and display the response if it's an OS or API error
+      if response and response.exit ~= 41 then
+        state.suggestion_ui.append_text(response.message)
+      end
+      state.suggestion_ui.update({ status = "done" })
+    end,
+  })
+end
+
 --- Setup key mappings
---- @param opts InsertModeOpts
-local setup_keymaps = function(opts)
+local setup_keymaps = function()
   local mode = config.modes[config.active_mode]
 
   -- On first Shift+Right, no matter the mode, trigger the assigned command.
@@ -88,9 +131,9 @@ local setup_keymaps = function(opts)
     vim.defer_fn(function()
       local count = state.shift_arrow_right_count
       if count == 1 then
-        state.job = opts.on_command(mode.command, state.suggestion_ui)
+        state.job = run_command(mode.command)
       elseif config.active_mode == "easy-does-it" and count == 2 then
-        state.job = opts.on_command(mode.double_command, state.suggestion_ui)
+        state.job = run_command(mode.double_command)
       end
       state.shift_arrow_right_count = 0
     end, 200)
@@ -139,8 +182,7 @@ local setup_keymaps = function(opts)
 end
 
 --- Setup autocommands based on the mode
---- @param opts InsertModeOpts
-local setup_autocmds = function(opts)
+local setup_autocmds = function()
   local augroup =
     vim.api.nvim_create_augroup("D41KeymapInsertGroup", { clear = true })
 
@@ -153,7 +195,7 @@ local setup_autocmds = function(opts)
   local mode = config.modes[config.active_mode]
   local debounced_command, timer = FnUtils.debounce(function()
     if config.active_mode == "r-for-rocket" then
-      state.job = opts.on_command(mode.command, state.suggestion_ui)
+      state.job = run_command(mode.command)
     end
   end, { reset_duration = config.modes["r-for-rocket"].timeout })
 
@@ -180,7 +222,6 @@ end
 --- @class InsertModeOpts
 --- @field active_mode ?InsertModeName
 --- @field modes ?InsertModes
---- @field on_command fun(name: string, suggestion_ui: SuggestionUIInstance): Job
 
 --- @param user_config InsertModeOpts
 M.setup = function(user_config)
@@ -190,8 +231,8 @@ M.setup = function(user_config)
   })
   state.suggestion_ui = SuggestionUI.build({ win_opts = { border = "none" } })
 
-  setup_keymaps(user_config)
-  setup_autocmds(user_config)
+  setup_keymaps()
+  setup_autocmds()
 end
 
 --- @param mode InsertModeName
