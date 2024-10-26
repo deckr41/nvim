@@ -159,7 +159,7 @@ function M.build(user_config)
   --- @param text string
   function instance.append_text(text)
     if not state.textarea_ui then return end
-    config.status = "writing"
+    if config.status ~= "writing" then set_status("writing") end
     state.textarea_ui.append_text(text)
     state.textarea_ui.scroll_bottom()
   end
