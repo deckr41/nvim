@@ -143,6 +143,11 @@ M.build = function(user_config)
   --- @return string meta_line The formatted meta line.
   --- @return integer meta_width The visible width of the meta bar.
   local function build_meta_bar()
+    local has_metabar = config.meta.left
+      or config.meta.right
+      or state.has_multiple_tabs
+    if not has_metabar then return "", 0 end
+
     local meta_left = config.meta.left or ""
     local meta_right = config.meta.right or ""
 
@@ -216,13 +221,8 @@ M.build = function(user_config)
     local width, height = calculate_dimensions(lines)
 
     -- Build the meta bar and adjust width and height
-    if config.meta.left or config.meta.right or state.has_multiple_tabs then
-      local meta_bar_content, meta_bar_size = build_meta_bar()
-
-      NVimUtils.set_win_options(state.win_id, {
-        winbar = meta_bar_content or "",
-      })
-
+    local meta_bar_content, meta_bar_size = build_meta_bar()
+    if meta_bar_content ~= "" then
       width = math.max(width, meta_bar_size)
       height = height + 1
     end
@@ -241,6 +241,14 @@ M.build = function(user_config)
         title_pos = config.title and config.title_pos or nil,
       })
     )
+
+    -- Update metabar after updating window width to avoid
+    -- "E36: Not enough room" errors.
+    if meta_bar_content ~= "" then
+      NVimUtils.set_win_options(state.win_id, {
+        winbar = meta_bar_content,
+      })
+    end
 
     -- Set buffer content
     vim.api.nvim_buf_set_lines(state.buf_id, 0, -1, false, lines)
