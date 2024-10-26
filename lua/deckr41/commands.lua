@@ -101,9 +101,12 @@ M.run = function(command_id, opts)
       },
     },
     on_start = opts.on_start,
-    on_data = opts.on_data,
-    on_done = opts.on_done,
+    on_data = function(chunk)
+      if not chunk or chunk == "" then return end
+      if opts.on_data then opts.on_data(chunk) end
+    end,
     on_error = opts.on_error,
+    on_done = opts.on_done,
   })
 
   if not status then

@@ -201,10 +201,7 @@ M.setup = function()
           })
           state.suggestion_ui.show()
         end,
-        on_data = function(chunk)
-          if not chunk or chunk == "" then return end
-          state.suggestion_ui.append_text(chunk)
-        end,
+        on_data = function(chunk) state.suggestion_ui.append_text(chunk) end,
         on_done = function(response, http_status)
           if http_status >= 400 then
             state.suggestion_ui.update({ value = response })
