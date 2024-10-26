@@ -20,10 +20,8 @@ and composing Pure Agents to build features across your entire codebase.
 ## Progress
 
 > [!IMPORTANT]
-> Most is work in progress and subject to change. The repo serves as my own
-> scratchpad while I iterate and reason about what I actually want.  
-> The plugin is functional but many advanced capabilities are still in
-> progress.
+> Most is work in progress and subject to change. The plugin is functional but
+> many advanced capabilities are still in progress.
 
 - [ ] **Semantic search** project files (generate, store and keep embeddings
   synced)
@@ -388,7 +386,7 @@ environment variables set. If both are set, Anthropic is used.
 
 - **`easy-does-it`** - Suggestions on demand with `<S-Right>`:
     - Pressing once will run the [`finish-line`](.d41rc#L5) command
-    - Twice will run [`finish-block`](.d41rc#L38)
+    - Twice will run [`finish-section`](.d41rc#L38)
 - **`r-for-rocket`** - Real-time suggestions with 1000ms debounce in INSERT
   mode. 
 
@@ -409,11 +407,11 @@ opts = {
       command = "finish-line",
 
       -- Command triggered by pressing `2x<S-Right>` quickly.
-      double_command = "finish-block",
+      double_command = "finish-section",
     },
     ["r-for-rocket"] = {
       -- Command triggered when entering or writing in INSERT mode
-      command = "finish_block",
+      command = "finish-section",
 
       -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
       timeout = 1000,
@@ -473,7 +471,7 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 
 - `<S-Right>`: Trigger suggestions.
   - Press `<S-Right>` once will trigger the `finish-line` command.
-  - Press `<S-Right>` twice quickly will trigger the `finish-block` command.
+  - Press `<S-Right>` twice quickly will trigger the `finish-section` command.
 - `<Tab>`, `<S-Right>`: Accept suggestion.
 - `<Escape>`: Dismiss suggestion.
 

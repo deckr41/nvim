@@ -33,10 +33,10 @@ local config = {
   modes = {
     ["easy-does-it"] = {
       command = "finish-line",
-      double_command = "finish-block",
+      double_command = "finish-section",
     },
     ["r-for-rocket"] = {
-      command = "finish-block",
+      command = "finish-section",
       timeout = 1000,
     },
   },

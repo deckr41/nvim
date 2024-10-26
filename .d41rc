@@ -27,8 +27,10 @@
     {
       "name": "finish-line",
       "system_prompt": [
-        "You are the best autocomplete engine for {{FILE_SYNTAX}}. You deeply understand the current line and how to complete it based on the immediate context. Focus on completing the line and do not overextend beyond it.",
-        "Use the provided code before and after as reference, but prioritize the current line and its syntax flow."
+        "You are the best autocomplete engine for {{FILE_SYNTAX}}.",
+        "You deeply understand the current line and how to complete it based on the immediate context. Focus on completing the line and do not overextend beyond it.",
+        "",
+        "Your mission is to use the provided code before and after as reference, but prioritize continuing the current line and its syntax flow. You will reply directly with the answer without any other decorations."
       ],
       "prompt": [
         "## Context",
@@ -36,42 +38,45 @@
         "### Code before the current line (important):",
         "{{LINES_BEFORE_CURRENT}}",
         "",
-        "### Text on the current line before the cursor:",
-        "{{TEXT_BEFORE_CURSOR}}",
-        "",
         "### Code after the current line (for reference only):",
         "{{LINES_AFTER_CURRENT}}",
         "",
-        "## Mission",
+        "### Text on the current line before the cursor (start from here):",
+        "{{TEXT_BEFORE_CURSOR}}",
         "",
-        "Do not add any decorations, ticks, quotes etc., unless it is syntactically necessary.",
-        "Complete the current line from the cursor position, providing only the necessary code to finish this line."
+        "## Mission",
+        "Continue the current line from the cursor position, ensuring high-quality code without overextending beyond the line.",
+        "Do not add any markdown decorations, ticks, quotes etc., unless it is syntactically necessary."
       ],
       "temperature": 0.1,
       "max_tokens": 50,
       "on_accept": "insert"
     },
     {
-      "name": "finish-block",
+      "name": "finish-section",
       "system_prompt": [
-        "You are the best autocomplete engine for {{FILE_SYNTAX}} code. You understand the flow and structure of code blocks, and your goal is to complete the current block of code based on the immediate context.",
-        "Prioritize the current line and nearby lines to predict what comes next, but be mindful of the scope of the block.",
-        "Stop once the current block is complete, without continuing beyond the necessary structure."
+        "# Indentity",
+        "You are the best autocomplete engine for {{FILE_SYNTAX}}.",
+        "You deeply understand the flow and structure of code and how to complete it based on the immediate context.",
+        "",
+        "## Mission",
+        "Your mission is is to complete the current section of code. Prioritize the current line and nearby lines to predict what comes next, but be mindful of the scope of the section.",
+        "Stop once the current section is complete, without continuing beyond the necessary structure. You will reply directly with the answer without any other decorations."
       ],
       "prompt": [
         "## Context",
         "Code before the current line (important):",
         "{{LINES_BEFORE_CURRENT}}",
         "",
-        "Text on the current line before the cursor:",
-        "{{TEXT_BEFORE_CURSOR}}",
-        "",
         "Code after the current line (for reference only, less important):",
         "{{LINES_AFTER_CURRENT}}",
         "",
+        "Text on the current line before the cursor (start from here):",
+        "{{TEXT_BEFORE_CURSOR}}",
+        "",
         "## Mission",
-        "Do not add any decorations, ticks, quotes etc., unless it is syntactically necessary.",
-        "Complete the current block of code based on the cursor position, ensuring high-quality code without overextending beyond the block."
+        "Complete the current section of code beginning from the cursor position, ensuring high-quality code without overextending beyond the section.",
+        "Do not add any markdown decorations, ticks, quotes etc., unless it is syntactically necessary."
       ],
       "temperature": 0.2,
       "max_tokens": 150,
