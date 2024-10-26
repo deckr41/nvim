@@ -4,19 +4,19 @@ local M = {}
 --- Run a function only if the specified duration has passed since the last call.
 --- @generic T: function
 --- @param fn T
---- @param opts ?{ reset_duration?: integer, has_leading_call?: boolean }
+--- @param opts { reset_duration?: integer, has_leading_call?: boolean }?
 --- @return T, uv_timer_t
 M.debounce = function(fn, opts)
   opts = opts or {}
   local reset_duration = opts.reset_duration or 200
   local has_leading_call = opts.has_leading_call or false
   local last_call = nil
-  local timer = vim.loop.new_timer()
+  local timer = vim.uv.new_timer()
 
   return function(...)
     local args = { ... }
     local call_original = vim.schedule_wrap(function()
-      last_call = vim.loop.now()
+      last_call = vim.uv.now()
       fn(unpack(args))
     end)
 
