@@ -46,11 +46,15 @@ local config = {
 --- @class InsertModeState
 --- @field job Job? Plenary Job of currently running command
 --- @field suggestion_ui SuggestionUIInstance?
---- @field shift_arrow_right_count integer RightArrow press counter since NeoVim cannot bind Shift + ArrowRight + ArrowRight
+--- @field shift_right_count integer RightArrow press counter since NeoVim cannot bind Shift + ArrowRight + ArrowRight
+--- @field is_applying_suggestion boolean Indicates if a suggestion is being applied
+--- @field can_auto_trigger boolean Indicates whether a new suggestion can be triggered
 local state = {
   job = nil,
   suggestion_ui = nil,
-  shift_arrow_right_count = 0,
+  shift_right_count = 0,
+  is_applying_suggestion = false,
+  can_auto_trigger = true,
 }
 
 --
@@ -58,14 +62,19 @@ local state = {
 --
 
 --- @return boolean
-local function can_accept() return state.job ~= nil and state.job.is_shutdown end
+local function can_accept_suggestion()
+  return state.job ~= nil and state.job.is_shutdown
+end
 
 --- @return boolean
-local function is_command_running()
+local function is_job_running()
   return state.job ~= nil and not state.job.is_shutdown
 end
 
-local function apply()
+local function apply_suggestion()
+  state.can_auto_trigger = false
+  state.is_applying_suggestion = true
+
   local pinpoint = Pinpointer.get()
   WindowUtils.insert_text_at(state.suggestion_ui.get_text(), {
     win_id = pinpoint.win_id,
@@ -76,9 +85,19 @@ local function apply()
 
   state.suggestion_ui.hide()
   state.job = nil
+
+  -- Reset the flag after a short delay.
+  -- The suggestion insertion triggers TextChangedI, which we need to ignore,
+  -- otherwise a new suggestion will be triggered right after one was applied.
+  -- Due to asynchronous event firing, we use vim.defer_fn to reset the flag
+  -- after we're "sure" the event finished.
+  vim.defer_fn(function() state.is_applying_suggestion = false end, 10)
 end
 
-local function refuse()
+--- Cancel the current suggestion and reset state.
+local function cancel_suggestion()
+  -- Force the user to make a change before suggesting again.
+  state.can_auto_trigger = false
   if state.job then
     state.job:shutdown(41)
     state.job = nil
@@ -86,6 +105,8 @@ local function refuse()
   state.suggestion_ui.hide()
 end
 
+--- Run a command and update the suggestion UI as the LLM reply comes back.
+--- @param name string Command name to run
 local function run_command(name)
   local pinpoint = Pinpointer.take_snapshot()
 
@@ -94,7 +115,7 @@ local function run_command(name)
     filetype = pinpoint.filetype,
   })
 
-  return Commands.run({ name = name }, {
+  state.job = Commands.run({ name = name }, {
     win_id = pinpoint.win_id,
     cursor = pinpoint.cursor,
     range = pinpoint.range,
@@ -129,41 +150,47 @@ end
 local setup_keymaps = function()
   local mode = config.modes[config.active_mode]
 
-  -- On first Shift+Right, no matter the mode, trigger the assigned command.
-  -- On 2xShift+right, if mode is "easy-does-it", trigger the double command.
-  local function handle_shift_right()
-    if can_accept() then return apply() end
-    if is_command_running() then return end
+  --- Debounced function to handle accumulated Shift+RightArrow presses.
+  --- On first press, trigger the mode's `command`.
+  --- On second press (in "easy-does-it" mode), trigger the `double_command`.
+  local debounced_shift = FnUtils.debounce(function()
+    if state.shift_right_count == 1 then
+      run_command(mode.command)
+    elseif state.shift_right_count >= 2 then
+      run_command(mode.double_command)
+    end
 
-    state.shift_arrow_right_count = state.shift_arrow_right_count + 1
-    vim.defer_fn(function()
-      local count = state.shift_arrow_right_count
-      if count == 1 then
-        state.job = run_command(mode.command)
-      elseif config.active_mode == "easy-does-it" and count == 2 then
-        state.job = run_command(mode.double_command)
-      end
-      state.shift_arrow_right_count = 0
-    end, 200)
+    state.shift_right_count = 0
+  end, { reset_duration = 200 })
+
+  --- Handler for Shift+RightArrow key press.
+  --- Count the number of presses and evaluate what to do when stopping after
+  --- 200ms.
+  local function handle_shift_right_press()
+    if can_accept_suggestion() then return apply_suggestion() end
+    if is_job_running() then return end
+
+    state.shift_right_count = state.shift_right_count + 1
+    debounced_shift()
   end
 
   NVimUtils.add_keymap("<S-Right>", {
     desc = "[deckr41] Trigger Shift+Right default commands",
-    modes = { i = handle_shift_right },
+    modes = { i = handle_shift_right_press },
   })
 
   NVimUtils.add_keymap("<Tab>", {
     desc = "[deckr41] Insert/accept suggestion if available",
     modes = {
       i = function()
-        if can_accept() then
-          apply()
+        if can_accept_suggestion() then
+          apply_suggestion()
         else
           -- Send the key as normal input
           vim.api.nvim_feedkeys(
             vim.api.nvim_replace_termcodes("<Tab>", true, false, true),
             "n",
-            false
+            true
           )
         end
       end,
@@ -175,7 +202,7 @@ local setup_keymaps = function()
     modes = {
       i = function()
         if state.job ~= nil then
-          refuse()
+          cancel_suggestion()
         else
           -- Send the key as normal input
           vim.api.nvim_feedkeys(
@@ -192,34 +219,49 @@ end
 --- Setup autocommands based on the mode
 local setup_autocmds = function()
   local augroup =
-    vim.api.nvim_create_augroup("D41KeymapInsertGroup", { clear = true })
+    vim.api.nvim_create_augroup("D41InsertModeGroup", { clear = true })
 
-  vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
+  -- Stop ongoing jobs or hide the current suggestion box when moving the cursor.
+  vim.api.nvim_create_autocmd("CursorMovedI", {
     group = augroup,
-    callback = function() refuse() end,
+    callback = cancel_suggestion,
   })
 
   -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
   local mode = config.modes[config.active_mode]
-  local debounced_command, timer = FnUtils.debounce(function()
-    if config.active_mode == "r-for-rocket" then
-      state.job = run_command(mode.command)
-    end
-  end, { reset_duration = config.modes["r-for-rocket"].timeout })
+  local trigger_suggestion, suggestion_timer = FnUtils.debounce(function()
+    if config.active_mode ~= "r-for-rocket" then return end
+    if state.can_auto_trigger then run_command(mode.command) end
+  end, {
+    reset_duration = config.modes["r-for-rocket"].timeout,
+  })
 
   vim.api.nvim_create_autocmd("InsertEnter", {
     group = augroup,
-    callback = function() debounced_command() end,
+    callback = function()
+      state.can_auto_trigger = true
+      trigger_suggestion()
+    end,
   })
 
   vim.api.nvim_create_autocmd("TextChangedI", {
     group = augroup,
-    callback = function() debounced_command() end,
+    callback = function()
+      if not state.is_applying_suggestion then
+        state.can_auto_trigger = true
+        trigger_suggestion()
+      end
+    end,
   })
 
   vim.api.nvim_create_autocmd("InsertLeave", {
     group = augroup,
-    callback = function() timer:stop() end,
+    callback = function()
+      -- Stop timer to cancel potential trailing call. This prevents the
+      -- suggestion_ui from popping up after user exited INSERT mode and
+      -- moved on to something else.
+      suggestion_timer:stop()
+    end,
   })
 end
 
@@ -228,11 +270,15 @@ end
 --
 
 --- @class InsertModeOpts
---- @field active_mode ?InsertModeName
---- @field modes ?InsertModes
+--- @field active_mode? InsertModeName
+--- @field modes? InsertModes
 
+--- Initialize the module with user configuration.
 --- @param user_config InsertModeOpts
-M.setup = function(user_config)
+function M.setup(user_config)
+  -- Start plenary profiling
+  -- require("plenary.profile").start("deckr41_insert_mode_handler.log", {})
+
   config = vim.tbl_deep_extend("force", config, {
     active_mode = user_config.active_mode,
     modes = user_config.modes,
@@ -243,19 +289,26 @@ M.setup = function(user_config)
   setup_autocmds()
 end
 
+--- Set the active insert mode.
 --- @param mode InsertModeName
-M.set_active_mode = function(mode)
+function M.set_active_mode(mode)
   if not config.modes[mode] then
     Logger.error("Invalid mode", { mode = mode })
     return
   end
+  if mode == "easy-does-it" then
+    -- Stop plenary profiling
+    -- require("plenary.profile").stop()
+  end
   config.active_mode = mode
 end
 
+--- Get the list of available insert modes.
 --- @return InsertModeName[]
-M.get_modes = function() return vim.tbl_keys(config.modes) end
+function M.get_modes() return vim.tbl_keys(config.modes) end
 
+--- Get the current active insert mode.
 --- @return InsertModeName
-M.get_active_mode = function() return config.active_mode end
+function M.get_active_mode() return config.active_mode end
 
 return M
