@@ -159,8 +159,9 @@ function M.build(user_config)
   --- @param text string
   function instance.append_text(text)
     if not state.textarea_ui then return end
-    if state.textarea_ui.is_empty() then config.status = "writing" end
+    config.status = "writing"
     state.textarea_ui.append_text(text)
+    state.textarea_ui.scroll_bottom()
   end
 
   --- Check if the suggestion is empty.

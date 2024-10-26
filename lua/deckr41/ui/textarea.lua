@@ -412,6 +412,19 @@ M.build = function(user_config)
   --- @return boolean
   function instance.is_visible() return state.is_visible end
 
+  --- Scroll to the top of the current tab.
+  function instance.scroll_top()
+    if not state.is_visible then return end
+    vim.api.nvim_win_set_cursor(state.win_id, { 1, 0 })
+  end
+
+  --- Scroll to the bottom of the current tab.
+  function instance.scroll_bottom()
+    if not state.is_visible then return end
+    local line_count = vim.api.nvim_buf_line_count(state.buf_id)
+    vim.api.nvim_win_set_cursor(state.win_id, { line_count, 0 })
+  end
+
   return instance
 end
 
