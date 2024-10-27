@@ -6,11 +6,11 @@
 > capabilities, while **:musical_score: Higher-Order Agents** orchestrate them
 > to solve complex problems across your codebase.
 
-`deckr41/nvim` is a Neovim plugin that adds 🤖 LLM capabilities directly into
-your workflow, allowing per-project AI customization through 📂 collocated
-`.d41rc` files, turning folders into **Pure Agents**—AI agents with their own
-identity, mission and context, akin to pure functions with clear domains and
-boundaries.
+`deckr41/nvim` is a Neovim plugin that adds 🤖 LLM capabilities into your
+coding workflow. It allows per-project AI customization through 📂 collocated
+`.d41rc` files, effectively turning folders into **Pure Agents** - AI agents
+with their own identity, mission, and context, similar to pure functions with
+clear domains and boundaries.
 
 At a higher level, your projects become **Higher-Order Agents**, orchestrating
 and composing Pure Agents to build features across your entire codebase.
@@ -23,30 +23,42 @@ and composing Pure Agents to build features across your entire codebase.
 > Most is work in progress and subject to change. The plugin is functional but
 > many advanced capabilities are still in progress.
 
-- [ ] **Semantic search** project files (generate, store and keep embeddings
-  synced)
-- [ ] Create **fine-tuned models** based on **specific project files** (code
-  guidelines, specific code sections that are more polished and serve as
-  examples for others, specific project specific data structures and patterns)
-- [ ] **Background command** or Agent **task** + LSP integration
-- [ ] Implement **tool support**
-- [ ] **Enhance UI**: support select type params, add text prompt, allow split
-  buffer intead of float
-- [x] **Run commands** in **NORMAL** and **VISUAL** modes
-- [x] **Reload commands** on `.d41rc` file change
-- [x] Get **auto-completion** suggestions in **INSERT** mode
-- [x] **Switch at run-time** backend, model and keyboard modes
-- [x] Implement `easy-does-it` and `r-for-rocket` **keyboard modes**
-- [x] **Scan and load commands** from `.d41rc` files up the tree
+### Implemented Features
+
+- [x] **Auto-Completion in INSERT Mode**: Get intelligent code suggestions
+  on-demand or in real-time as you type.
+- [x] **Run Commands in NORMAL and VISUAL Modes**: Execute AI-powered commands
+  directly from your editor.
+- [x] **Dynamic Backend and Model Switching**: Change AI backends and models at
+  runtime.
+- [x] **Custom Keyboard Modes**: Use `easy-does-it` for on-demand suggestions
+  or `r-for-rocket` for real-time suggestions.
+- [x] **Reload Commands on `.d41rc` Changes**: Automatically update commands when
+  your configuration changes.
+- [x] **Recursive Command Loading**: Scan and load commands from `.d41rc` files
+  up the directory tree.
+
+### Work in Progress
+
+- [ ] **Semantic Search:** Generate, store, and keep embeddings synced for
+  project files.
+- [ ] **Fine-Tuned Models:** UX for training models based on specific project
+  files for more accurate suggestions.
+- [ ] **Background Commands and LSP Integration:** Run commands in the
+  background and expose entry points through LSP.
+- [ ] **Tool Support:** Implement custom tools for enhanced AI capabilities.
+- [ ] **Enhanced UI:** Support `select` parameters, add `input` prompts, allow
+  split buffer instead of floating windows.
 
 ## :star2: Features
 
 ### :keyboard: Simple one-shot Commands
 
-Define prompts with context, variable interpolation, model parameter control
+Define prompts with context, variable interpolation, and model parameter
+control.
 
 <details>
-<summary>Example of a Command `.d41rc` file, explaining a piece of code:</summary>
+<summary>Example: Explaining a piece of code using a command in `.d41rc`</summary>
 
 ```json
 {
@@ -116,7 +128,7 @@ Encapsulate domain-specific knowledge using 📂 collocated `.d41rc` files,
 acting like pure functions with clear boundaries and responsibilities.
 
 <details>
-<summary>Example of a Pure Agent `.d41rc` file, responsible for a React UI button component:</summary>
+<summary>Example: A Pure Agent `.d41rc` for a React UI button component:</summary>
 
 ```json
 {
@@ -189,10 +201,11 @@ acting like pure functions with clear boundaries and responsibilities.
 
 ### :musical_score: Higher-Order Agents
 
-Projects act as orchestrators, composing Pure Agents to solve complex, cross-cutting problems across your codebase.
+Projects act as orchestrators, composing Pure Agents to solve complex,
+cross-cutting problems across your codebase.
 
 <details>
-<summary>Example of a Higher-Order Agent `.d41rc` file, responsible for a React application:</summary>
+<summary>Example: A Higher-Order Agent `.d41rc` for a React application:</summary>
 
 ```json
 {
@@ -266,9 +279,8 @@ Projects act as orchestrators, composing Pure Agents to solve complex, cross-cut
 
 ### :floppy_disk: Commands and Agents as Code
 
-Implement AI commands and agents through code, allowing
-you to version-control, share, and collaborate on AI
-behaviors alongside your codebase.
+Implement AI commands and agents through code, allowing you to version-control,
+share, and collaborate on AI behaviors alongside your codebase.
 
 ### :hammer: Tools
 
@@ -362,8 +374,9 @@ responses.
 
 ### Minimal Configuration
 
-To get started, you just need `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
-environment variables set. If both are set, Anthropic is used.
+To get started, you need to set either the `OPENAI_API_KEY` or
+`ANTHROPIC_API_KEY` environment variable. If both are set, Anthropic is used by
+default.
 
 **Example for `lazy.nvim`**:
 
@@ -376,8 +389,7 @@ environment variables set. If both are set, Anthropic is used.
     -- See below all options.
   },
   dependencies = {
-    "nvim-lua/plenary.nvim",
-    "nvim-telescope/telescope.nvim",
+    "nvim-lua/plenary.nvim"
   },
 }
 ```
@@ -385,12 +397,12 @@ environment variables set. If both are set, Anthropic is used.
 ### Modes
 
 - **`easy-does-it`** - Suggestions on demand with `<S-Right>`:
-    - Pressing once will run the [`finish-line`](.d41rc#L5) command
-    - Twice will run [`finish-section`](.d41rc#L38)
+  - Press once to trigger the [`finish-line`](.d41rc#L28) command.
+  - Press twice quickly to trigger the [`finish-section`](.d41rc#L56) command.
 - **`r-for-rocket`** - Real-time suggestions with 1000ms debounce in INSERT
   mode. 
 
-See `modes` key in configuration for setup.
+Configure modes in the `modes` key of your setup.
 
 ### Full Configuration Options
 
@@ -410,10 +422,10 @@ opts = {
       double_command = "finish-section",
     },
     ["r-for-rocket"] = {
-      -- Command triggered when entering or writing in INSERT mode
+      -- Command triggered when entering or writing in INSERT mode.
       command = "finish-section",
 
-      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode
+      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode.
       timeout = 1000,
     },
   },
@@ -445,7 +457,7 @@ opts = {
     },
   },
 
-  -- If not specified, the auto-detect backed is used. 
+  -- If not specified, the auto-detect backend is used.
   -- If both are active, Anthropic is used.
   active_backend = nil,
 
@@ -470,30 +482,40 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 **INSERT** mode:
 
 - `<S-Right>`: Trigger suggestions.
-  - Press `<S-Right>` once will trigger the `finish-line` command.
-  - Press `<S-Right>` twice quickly will trigger the `finish-section` command.
-- `<Tab>`, `<S-Right>`: Accept suggestion.
-- `<Escape>`: Dismiss suggestion.
+  - Press `<S-Right>` once to trigger the `finish-line` command.
+  - Press `<S-Right>` twice quickly to trigger the `finish-section` command.
+- `<Tab>` or `<S-Right>`: Accept suggestion.
+- `<Escape>` or `CursorMoved`: Dismiss suggestion.
 
-**VISUAL** mode: *(Work in Progress)*
+**NORMAL** and **VISUAL** mode:
 
-**NORMAL** mode: *(Work in Progress)*
+- `<leader>dc`: Open the command palette to run AI commands.
+- `<leader>dp`: Open the control panel to switch backends and modes.
 
 ### Commands
 
-- **`:D41Eject`**: Ejects the default `.d41rc` file into your current working
-  directory for customization.
+- `:D41EjectDefaultCommands`: Ejects the default `.d41rc` file into your
+  current working directory for customization.
+- `:D41ControlPanel`: Opens the control panel to switch backends, models, and
+  modes.
+- `:D41RunCommand`: Opens the command palette to execute a command from your
+  `.d41rc` configurations.
 
 ## Understanding `.d41rc`
 
 `.d41rc` files configure AI behavior and commands per project. Multiple files
 can coexist, allowing flexible customization.
 
-- Commands are loaded from `.d41rc` files up the directory tree, stopping at
-  the first file with `"root": true`. *(Work in Progress)*
-- Commands merge top-down, so closer `.d41rc` files can override those above,
-  with deep merging for selective changes, for example allowing the addition of
-  certain context files to an existing command. *(Work in Progress)*
+- **Special Nodes**: There are two special `.d41rc` files:
+  - **Plugin's Default Commands**: Provided by the plugin, located at
+    `plugin_path/.d41rc`. This is the file ejected by
+    `:D41EjectDefaultCommands` command.
+  - **User-Specific Commands**: Located at `~/.config/deckr41/.d41rc`, allowing
+    you to add your own commands.
+- **Command Loading:** Commands from all `.d41rc` files are loaded and
+  accessible from the command palette via `:D41RunCommand` or `<leader>dc`.
+  Commands are not overwritten; they coexist, and you can choose which command
+  to execute from their respective file.
 
 ### Structure and Commands
 
@@ -524,14 +546,16 @@ Refer to the schema definition [here](schemas/rc.json).
 
 ### Variable Interpolation
 
-The `system_prompt` and `prompt` fields support dynamic variable interpolation:
+The `system_prompt` and `prompt` fields support dynamic variable interpolation,
+allowing you to include contextual information in your prompts:
 
-- **`{{FILE_PATH}}`**: Current file path.
-- **`{{FILE_SYNTAX}}`**: Current file's language.
-- **`{{FILE_CONTENT}}`**: Entire document.
-- **`{{LINES_BEFORE_CURRENT}}`**: Code before the line.
-- **`{{TEXT_BEFORE_CURSOR}}`**: Text before cursor.
-- **`{{LINES_AFTER_CURRENT}}`**: Code after the line.
+- **{{FILE_PATH}}:** Current file path.
+- **{{FILE_SYNTAX}}:** Current file's language.
+- **{{LINES_BEFORE_CURRENT}}:** Lines before the current line.
+- **{{LINES_AFTER_CURRENT}}:** Lines after the current line.
+- **{{TEXT_BEFORE_CURSOR}}:** Text before the cursor on the current line.
+- **{{TEXT_AFTER_CURSOR}}:** Text after the cursor on the current line.
+- **{{TEXT}}:** Selected text (if any), or the entire buffer if no selection.
 
 ## Development
 

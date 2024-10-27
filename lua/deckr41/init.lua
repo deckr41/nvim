@@ -108,14 +108,14 @@ M.setup = function(user_config)
     end,
   })
 
-  NVimUtils.add_command("D41OpenControlPanel", {
+  NVimUtils.add_command("D41ControlPanel", {
     desc = "[deckr41] Open control panel",
     action = control_panel.show,
   })
 
   NVimUtils.add_keymap("<leader>dp", {
     desc = "[deckr41] Open control panel",
-    modes = { n = ":D41OpenControlPanel<CR>" },
+    modes = { n = ":D41ControlPanel<CR>" },
   })
 end
 
