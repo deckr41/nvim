@@ -25,14 +25,12 @@ and composing Pure Agents to build features across your entire codebase.
 
 ### Implemented Features
 
-- [x] **Auto-Completion in INSERT Mode**: Get intelligent code suggestions
-  on-demand or in real-time as you type.
-- [x] **Run Commands in NORMAL and VISUAL Modes**: Execute AI-powered commands
-  directly from your editor.
+- [x] **Custom Keyboard Modes**: Use `easy-does-it` for on-demand code
+  suggestions or `r-for-rocket` for real-time as you type suggestions.
+- [x] **Run Commands in NORMAL and VISUAL Modes**: Execute custom context aware
+  AI prompts directly from your editor.
 - [x] **Dynamic Backend and Model Switching**: Change AI backends and models at
   runtime.
-- [x] **Custom Keyboard Modes**: Use `easy-does-it` for on-demand suggestions
-  or `r-for-rocket` for real-time suggestions.
 - [x] **Reload Commands on `.d41rc` Changes**: Automatically update commands when
   your configuration changes.
 - [x] **Recursive Command Loading**: Scan and load commands from `.d41rc` files
