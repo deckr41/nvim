@@ -54,8 +54,12 @@ end
 --- @param command RCCommand
 --- @return string
 local function get_command_preview(command)
-  local system_prompt, prompt =
-    Commands.compile(command, Pinpointer.get_position())
+  local pinpoint = Pinpointer.get()
+  local system_prompt, prompt = Commands.compile(command, {
+    win_id = pinpoint.win_id,
+    cursor = pinpoint.cursor,
+    range = pinpoint.range,
+  })
   local preview = ""
 
   if system_prompt then

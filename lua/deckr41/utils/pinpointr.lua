@@ -27,14 +27,4 @@ end
 
 M.get = function() return vim.deepcopy(state) end
 
-M.get_position = function()
-  return {
-    win_id = state.win_id,
-    cursor = state.cursor,
-    range = state.range,
-  }
-end
-
-M.get_filetype = function() return state.filetype end
-
 return M

@@ -1,3 +1,5 @@
+local Logger = require("deckr41.utils.loggr")("WindowUtils")
+
 --- @class WindowUtils
 local M = {}
 
@@ -140,7 +142,7 @@ end
 local metadata_getters = {
   FILE_PATH = function(buf_id) return vim.api.nvim_buf_get_name(buf_id) end,
   FILE_SYNTAX = function(buf_id)
-    return vim.api.nvim_get_option_value("syntax", { buf = buf_id })
+    return vim.api.nvim_get_option_value("filetype", { buf = buf_id })
   end,
   LINES_BEFORE_CURRENT = function(buf_id, opts)
     local row = opts.cursor[1]
