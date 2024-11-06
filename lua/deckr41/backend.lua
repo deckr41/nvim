@@ -10,13 +10,14 @@ local M = {}
 --- @class BackendService
 --- @field id BackendServiceName
 --- @field url string
---- @field api_key ?string
+--- @field api_key? string
 --- @field default_model string
 --- @field available_models table<string, { max_output_tokens: integer }>
 --- @field temperature number
 
 --- @alias BackendServices table<BackendServiceName, BackendService>
 
+--- Default backend configurations.
 --- @type BackendServices
 local config = {
   openai = {
@@ -24,15 +25,9 @@ local config = {
     url = "https://api.openai.com/v1/chat/completions",
     api_key = os.getenv("OPENAI_API_KEY"),
     default_model = "gpt-4o-2024-08-06",
-    -- https://platform.openai.com/docs/models/gpt-4o
     available_models = {
-      -- High-intelligence flagship model for complex, multi-step tasks.
-      -- GPT-4o is cheaper and faster than GPT-4 Turbo.
       ["gpt-4o"] = { max_output_tokens = 4096 },
-      -- Latest snapshot that supports Structured Outputs
       ["gpt-4o-2024-08-06"] = { max_output_tokens = 16384 },
-      -- Affordable and intelligent small model for fast, lightweight tasks.
-      -- GPT-4o mini is cheaper and more capable than GPT-3.5 Turbo.
       ["gpt-4o-mini"] = { max_output_tokens = 16384 },
     },
     temperature = 0.2,
@@ -41,124 +36,122 @@ local config = {
     id = "anthropic",
     url = "https://api.anthropic.com/v1/messages",
     api_key = os.getenv("ANTHROPIC_API_KEY"),
-    default_model = "claude-3-5-sonnet-latest",
+    default_model = "claude-3-5-haiku-latest",
     available_models = {
       ["claude-3-5-sonnet-latest"] = { max_output_tokens = 8192 },
-      ["claude-3-haiku"] = { max_output_tokens = 4096 },
+      ["claude-3-5-haiku-latest"] = { max_output_tokens = 8192 },
     },
     temperature = 0.2,
   },
 }
 
+--- Internal state of the backend module.
 --- @class BackendState
---- @field active_backend ?BackendServiceName
---- @field active_model ?string
 local state = {
-  active_backend = nil,
-  active_model = nil,
+  active_backend = nil, --- @type BackendServiceName?
+  active_model = nil, --- @type string?
 }
 
---- @class BackendSetupOpts
---- @field backends ?BackendServices
---- @field active_backend ?BackendServiceName
---- @field active_model ?string
+--- Detect the active backend based on environment variables.
+--- Anthropic takes precedence.
+--- @return BackendServiceName?
+local function detect_active_backend()
+  local env_backends = {
+    { env_key = "ANTHROPIC_API_KEY", backend_name = "anthropic" },
+    { env_key = "OPENAI_API_KEY", backend_name = "openai" },
+  }
+  for _, item in ipairs(env_backends) do
+    if os.getenv(item.env_key) then return item.backend_name end
+  end
+  return nil
+end
 
+--- Backend setup options.
+--- @class BackendSetupOpts
+--- @field backends? BackendServices
+--- @field active_backend? BackendServiceName
+--- @field active_model? string
+
+--- Initialize the backend module with user options.
 --- @param opts BackendSetupOpts
-M.setup = function(opts)
-  config = vim.tbl_deep_extend("force", config, opts.backends or {})
+function M.setup(opts)
+  opts = opts or {}
+
+  -- Merge user-defined backends into the default config.
+  if opts.backends then
+    for backend_name, backend_config in pairs(opts.backends) do
+      if not config[backend_name] then
+        Logger.error(
+          "Invalid backend. Accepted values are 'openai' and 'anthropic'.",
+          { name = backend_name }
+        )
+      end
+      config[backend_name] =
+        vim.tbl_deep_extend("force", config[backend_name], backend_config)
+    end
+  end
+
+  -- Set active backend and model from user options.
   state.active_backend = opts.active_backend
   state.active_model = opts.active_model
 
-  -- Deep merge user defined config for each backend
-  for backend_name, backend_config in pairs(opts.backends or {}) do
-    if not config[backend_name] then
-      Logger.error(
-        "Invalid backend, accepted values are 'openai' and 'anthropic'.",
-        { name = backend_name }
-      )
-      return
-    end
-
-    if not state.active_backend then state.active_backend = backend_name end
-    config[backend_name] =
-      vim.tbl_deep_extend("force", config[backend_name], backend_config)
+  -- Validate the explicitly set active backend.
+  if state.active_backend and not config[state.active_backend] then
+    Logger.error("Backend is not supported.", {
+      backend = state.active_backend,
+      supported_backends = vim.tbl_keys(config),
+    })
   end
 
-  -- If user did not set the active backend, try to autodetect
+  -- Auto-detect the active backend if not explicitly set.
   if not state.active_backend then
-    local env_to_backend = {
-      { env_key = "ANTHROPIC_API_KEY", backend_name = "anthropic" },
-      { env_key = "OPENAI_API_KEY", backend_name = "openai" },
-    }
-
-    for _, item in ipairs(env_to_backend) do
-      if not state.active_backend and os.getenv(item.env_key) then
-        state.active_backend = item.backend_name
-      end
-    end
-
+    state.active_backend = detect_active_backend()
     if not state.active_backend then
       Logger.error(
-        "Backend not set. Please configure a backend or provide API keys for OpenAI or Anthropic."
+        "Could not autodetect backend. No API keys found for supported backends."
       )
-      return
     end
   end
 
-  -- Check if backend is usable by checing it's API key
+  -- Ensure the API key is set for the active backend.
   if not config[state.active_backend].api_key then
     Logger.error(
-      "API key not set for backend. Please set the API key in your configuration or as an environment variable.",
+      "API key not set for backend.",
       { backend = state.active_backend }
     )
-    return
   end
 
-  -- If user did not set the active model, use backend's default model
+  -- Set the active model to the default if not explicitly set.
   if not state.active_model then
     state.active_model = config[state.active_backend].default_model
   end
 
-  -- Check if model is supported by the active backend
+  -- Validate the active model for the active backend.
   if not config[state.active_backend].available_models[state.active_model] then
-    Logger.error(
-      "Model not supported by backend. Please choose a valid model.",
-      {
-        backend = state.active_backend,
-        model = state.active_model or "nil",
-        supported_models = vim.tbl_keys(
-          config[state.active_backend].available_models
-        ),
-      }
-    )
-    return
+    Logger.error("Model not supported by backend.", {
+      backend = state.active_backend,
+      model = state.active_model or "nil",
+      supported_models = vim.tbl_keys(
+        config[state.active_backend].available_models
+      ),
+    })
   end
 
-  Logger.debug("Backend successfully initialized", {
+  Logger.debug("Backend successfully initialized.", {
     active_backend = state.active_backend,
     active_model = state.active_model,
   })
 end
 
---- @class PrepareOpenAIOpts
---- @field model string
---- @field system_prompt string
---- @field messages { role: string, content: string }[]
---- @field temperature number
---- @field max_output_tokens integer
-
--- Prepare request payload OpenAI request
----@param backend BackendService
----@param opts PrepareOpenAIOpts
----@return string
----@return table
----@return table
-local prepare_openai_request = function(backend, opts)
+--- Prepare the request payload for OpenAI.
+--- @param backend BackendService
+--- @param opts table
+--- @return string url, table headers, table body
+local function prepare_openai_request(backend, opts)
   local headers = {
     ["Authorization"] = "Bearer " .. backend.api_key,
     ["Content-Type"] = "application/json",
   }
-
   local body = {
     messages = TableUtils.prepend(
       opts.messages,
@@ -169,30 +162,19 @@ local prepare_openai_request = function(backend, opts)
     stream = true,
     max_tokens = opts.max_output_tokens,
   }
-
   return backend.url, headers, body
 end
 
---- @class PrepareAnthropicOpts
---- @field model string
---- @field system_prompt string
---- @field messages { role: string, content: string }[]
---- @field temperature number
---- @field max_output_tokens integer
-
--- Prepare request payload Anthropic request
----@param backend BackendService
----@param opts PrepareAnthropicOpts
----@return string
----@return table
----@return table
-local prepare_anthropic_request = function(backend, opts)
+--- Prepare the request payload for Anthropic.
+--- @param backend BackendService
+--- @param opts table
+--- @return string url, table headers, table body
+local function prepare_anthropic_request(backend, opts)
   local headers = {
     ["x-api-key"] = backend.api_key,
     ["anthropic-version"] = "2023-06-01",
     ["Content-Type"] = "application/json",
   }
-
   local body = {
     system = opts.system_prompt,
     messages = opts.messages,
@@ -201,54 +183,41 @@ local prepare_anthropic_request = function(backend, opts)
     stream = true,
     max_tokens = opts.max_output_tokens,
   }
-
   return backend.url, headers, body
 end
 
---- @class PrepareRequestOpts
---- @field backend BackendService
---- @field model_name string
---- @field max_output_tokens ?integer
---- @field temperature ?number
---- @field system_prompt ?string
---- @field messages { role: string, content: string }[]
-
---- @param opts PrepareRequestOpts
---- @return string url
---- @return table headers
---- @return table body
-local prepare_request = function(opts)
+--- Prepare the request based on the backend.
+--- @param opts table
+--- @return string url, table headers, table body
+local function prepare_request(opts)
   local backend = opts.backend
-  local model = backend.available_models[opts.model_name]
+  local model_info = backend.available_models[opts.model_name]
   local temperature = opts.temperature or backend.temperature
   local max_output_tokens =
-    math.min(opts.max_output_tokens or math.huge, model.max_output_tokens)
+    math.min(opts.max_output_tokens or math.huge, model_info.max_output_tokens)
 
-  if backend.id == "openai" then
-    return prepare_openai_request(backend, {
-      model = opts.model_name,
-      system_prompt = opts.system_prompt or "",
-      messages = opts.messages,
-      temperature = temperature,
-      max_output_tokens = max_output_tokens,
-    })
-  end
-
-  return prepare_anthropic_request(backend, {
+  local request_opts = {
     model = opts.model_name,
     system_prompt = opts.system_prompt or "",
     messages = opts.messages,
     temperature = temperature,
     max_output_tokens = max_output_tokens,
-  })
+  }
+
+  if backend.id == "openai" then
+    return prepare_openai_request(backend, request_opts)
+  else
+    return prepare_anthropic_request(backend, request_opts)
+  end
 end
 
+--- Extract text from streamed data chunks.
 --- @param backend_name BackendServiceName
 --- @param data_chunk string
 --- @return string
-local extract_text_from_stream_data = function(backend_name, data_chunk)
+local function extract_text_from_stream_data(backend_name, data_chunk)
   local json_chunk = data_chunk:match("^data: (.+)$")
-  if json_chunk == "[DONE]" or json_chunk == nil then return "" end
+  if json_chunk == "[DONE]" or not json_chunk then return "" end
 
   -- It can happen that curl closes prematurely if the user moves the cursor
   -- before the command finishes gracefully. This might leave unterminated
@@ -260,35 +229,30 @@ local extract_text_from_stream_data = function(backend_name, data_chunk)
     return ""
   end
 
-  local result
   if backend_name == "openai" then
-    result = TableUtils.deep_get(json_data, "choices", 1, "delta", "content")
-  end
-  if backend_name == "anthropic" then
-    result = TableUtils.deep_get(json_data, "delta", "text")
+    return TableUtils.deep_get(json_data, "choices", 1, "delta", "content")
+      or ""
+  elseif backend_name == "anthropic" then
+    return TableUtils.deep_get(json_data, "delta", "text") or ""
   end
 
-  return result or ""
+  return ""
 end
 
---- @alias BackendOnStartCallback fun(config: { backend_name: string, model: string, temperature: number }): nil
---- @alias BackendOnDataCallback fun(chunk: string): nil
---- @alias BackendOnDoneCallback fun(response: string, http_status: number): nil
---- @alias BackendOnErrorCallback fun(response: { message: string, stderr: string, exit?: number }): nil
-
 --- @class BackendAskOpts
---- @field max_output_tokens ?integer
---- @field temperature ?number
---- @field system_prompt ?string
---- @field messages { role: string, content: string }[]
---- @field on_start ?BackendOnStartCallback
---- @field on_data ?BackendOnDataCallback
---- @field on_done ?BackendOnDoneCallback
---- @field on_error ?BackendOnErrorCallback
+--- @field max_output_tokens? integer
+--- @field temperature? number
+--- @field system_prompt? string
+--- @field messages table[]
+--- @field on_start? fun(config: table): nil
+--- @field on_data? fun(chunk: string): nil
+--- @field on_done? fun(response: string, http_status: number): nil
+--- @field on_error? fun(response: table): nil
 
+--- Send a request to the active backend.
 --- @param opts BackendAskOpts
 --- @return Job
-M.ask = function(opts)
+function M.ask(opts)
   local url, headers, body = prepare_request({
     backend = config[state.active_backend],
     model_name = state.active_model,
@@ -341,43 +305,47 @@ M.ask = function(opts)
   })
 end
 
+--- Set the active backend.
 --- @param name BackendServiceName
-M.set_active_backend = function(name)
+function M.set_active_backend(name)
   if not config[name] then
-    Logger.error("Invalid backend", { name = name or "nil" })
-    return
+    Logger.error("Invalid backend.", { name = name or "nil" })
   end
   state.active_backend = name
   state.active_model = config[name].default_model
 end
 
---- @return BackendServiceName
-M.get_active_backend = function() return state.active_backend end
+--- Get the active backend.
+--- @return BackendServiceName?
+function M.get_active_backend() return state.active_backend end
 
+--- Get all available backend names.
 --- @return BackendServiceName[]
-M.get_backend_names = function() return vim.tbl_keys(config) end
+function M.get_backend_names() return vim.tbl_keys(config) end
 
+--- Set the active model for the current backend.
 --- @param name string
-M.set_active_model = function(name)
-  if not config[state.active_backend].available_models[name] then
-    Logger.error("Invalid model for the active backend", {
+function M.set_active_model(name)
+  local backend = config[state.active_backend]
+  if not backend.available_models[name] then
+    Logger.error("Invalid model for the active backend.", {
       backend = state.active_backend,
       model = name,
-      available_models = vim.tbl_keys(
-        config[state.active_backend].available_models
-      ),
+      available_models = vim.tbl_keys(backend.available_models),
     })
-    return
   end
   state.active_model = name
 end
 
---- @return string
-M.get_active_model = function() return state.active_model end
+--- Get the active model.
+--- @return string?
+function M.get_active_model() return state.active_model end
 
+--- Get available models for the active backend.
 --- @return string[]
-M.get_available_models = function()
-  return vim.tbl_keys(config[state.active_backend].available_models)
+function M.get_available_models()
+  local backend = config[state.active_backend]
+  return vim.tbl_keys(backend.available_models)
 end
 
 return M
