@@ -118,7 +118,6 @@ local function run_command(name)
   state.job = Commands.run({ name = name }, {
     win_id = pinpoint.win_id,
     cursor = pinpoint.cursor,
-    range = pinpoint.range,
     on_start = function(cmd_config)
       state.suggestion_ui.update({
         meta = string.format("%s / %s ", name, cmd_config.model),
@@ -273,9 +272,6 @@ end
 --- Initialize the module with user configuration.
 --- @param user_config InsertModeOpts
 function M.setup(user_config)
-  -- Start plenary profiling
-  -- require("plenary.profile").start("deckr41_insert_mode_handler.log", {})
-
   config = vim.tbl_deep_extend("force", config, {
     active_mode = user_config.active_mode,
     modes = user_config.modes,
@@ -291,11 +287,6 @@ end
 function M.set_active_mode(mode)
   if not config.modes[mode] then
     Logger.error("Invalid mode", { mode = mode })
-    return
-  end
-  if mode == "easy-does-it" then
-    -- Stop plenary profiling
-    -- require("plenary.profile").stop()
   end
   config.active_mode = mode
 end
