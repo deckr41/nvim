@@ -78,8 +78,8 @@ M.setup = function(opts)
       )
       return
     end
-    if not state.active_backend then state.active_backend = backend_name end
 
+    if not state.active_backend then state.active_backend = backend_name end
     config[backend_name] =
       vim.tbl_deep_extend("force", config[backend_name], backend_config)
   end
