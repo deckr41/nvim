@@ -10,34 +10,39 @@ local RCNodes = require("deckr41.rc-nodes")
 --- @class Commands
 local M = {}
 
+--- Expose necessary functions from RCNodes
 M.setup = RCNodes.load_all
-
 M.find = RCNodes.find_command
-
 M.find_nodes = RCNodes.find_path
-
 M.eject_defaults = RCNodes.eject_internal_rc
+
+--- @class CommandData
+--- @field prompt string
+--- @field system_prompt? string
 
 --- @class CommandsCompileOpts
 --- @field win_id integer
 --- @field cursor integer[]
---- @field range ?integer[]
---- @field extra_vars ?table<string, string>
+--- @field range? integer[]
+--- @field extra_vars? table<string, string>
 
---- @param data { prompt: string, system_prompt?: string }
---- @param opts CommandsCompileOpts
---- @return string|nil: Compiled command system_prompt
---- @return string: Compiled command prompt
-M.compile = function(data, opts)
-  local variable_names =
-    StringUtils.find_variable_names(data.system_prompt .. data.prompt)
+--- Compile the command's prompts by interpolating variables.
+--- @param data CommandData Table containing 'prompt' and optional 'system_prompt'.
+--- @param opts CommandsCompileOpts Options for compilation.
+--- @return string|nil system_prompt The compiled system prompt (if any).
+--- @return string prompt The compiled prompt.
+function M.compile(data, opts)
+  -- Detect and extract variables from the combined prompts
+  local combined_prompts = (data.system_prompt or "") .. data.prompt
+  local variable_names = StringUtils.find_variable_names(combined_prompts)
   local variables = WindowUtils.get_metadata(variable_names, {
     win_id = opts.win_id,
     cursor = opts.cursor,
     range = opts.range,
   })
-  local context = vim.tbl_extend("force", variables, opts.extra_vars or {})
 
+  -- Inject context
+  local context = vim.tbl_extend("force", variables, opts.extra_vars or {})
   local prompt = StringUtils.interpolate(data.prompt, context)
   local system_prompt = data.system_prompt
       and StringUtils.interpolate(data.system_prompt, context)
@@ -49,19 +54,22 @@ end
 --- @class CommandsRunOpts
 --- @field win_id integer
 --- @field cursor integer[]
---- @field range ?integer[]
---- @field on_start BackendOnStartCallback
---- @field on_data BackendOnDataCallback
---- @field on_done BackendOnDoneCallback
---- @field on_error BackendOnErrorCallback
+--- @field range? integer[]
+--- @field on_start? fun(config: table): nil
+--- @field on_data? fun(chunk: string): nil
+--- @field on_done? fun(response: string, http_status: number): nil
+--- @field on_error? fun(response: table): nil
 
---- @param command_id RCCommandID
---- @param opts CommandsRunOpts
---- @return Job
-M.run = function(command_id, opts)
+--- Run a command by compiling and sending it to the backend.
+--- @param command_id RCCommandID The ID of the command to run.
+--- @param opts CommandsRunOpts Options for running the command.
+--- @return Job|nil The job running the command, or nil if an error occurred.
+function M.run(command_id, opts)
   local command = RCNodes.get_command(command_id)
+  if not command then
+    Logger.error("Command not found.", { command_id = command_id })
+  end
 
-  -- Ask user's input
   local parameters = {}
   if command.parameters then
     for param_name, param in pairs(command.parameters) do
@@ -73,50 +81,40 @@ M.run = function(command_id, opts)
     end
   end
 
-  -- Extract and inject variable names from command prompts
-  local variable_names =
-    StringUtils.find_variable_names(command.system_prompt .. command.prompt)
-
-  local variables = WindowUtils.get_metadata(variable_names, {
+  local system_prompt, prompt = M.compile({
+    prompt = command.prompt,
+    system_prompt = command.system_prompt,
+  }, {
     win_id = opts.win_id,
     cursor = opts.cursor,
     range = opts.range,
+    extra_vars = parameters,
   })
 
-  local context = vim.tbl_extend("force", variables, parameters)
-  local prompt = StringUtils.interpolate(command.prompt, context)
-  local system_prompt = command.system_prompt
-      and StringUtils.interpolate(command.system_prompt, context)
-    or nil
-
-  -- Send the compiled prompts to the currently selected backend
-  local status, job = pcall(Backend.ask, {
+  local success, job_or_error = pcall(Backend.ask, {
     system_prompt = system_prompt,
     max_tokens = command.max_tokens,
     temperature = command.temperature,
     messages = {
-      {
-        role = "user",
-        content = prompt,
-      },
+      { role = "user", content = prompt },
     },
     on_start = opts.on_start,
     on_data = function(chunk)
-      if not chunk or chunk == "" then return end
-      if opts.on_data then opts.on_data(chunk) end
+      if chunk and chunk ~= "" and opts.on_data then opts.on_data(chunk) end
     end,
     on_error = opts.on_error,
     on_done = opts.on_done,
   })
 
-  if not status then
+  if not success then
     Logger.error(
-      "Something went wrong trying to run command",
-      { opts = command_id, error = job }
+      "Failed to run command.",
+      { command_id = command_id, error = job_or_error }
     )
+    return nil
   end
 
-  return job
+  return job_or_error
 end
 
 return M
