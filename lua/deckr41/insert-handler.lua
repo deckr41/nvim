@@ -144,12 +144,11 @@ end
 
 --- Setup key mappings
 local setup_keymaps = function()
-  local mode = config.modes[config.active_mode]
-
   --- Debounced function to handle accumulated Shift+RightArrow presses.
   --- On first press, trigger the mode's `command`.
   --- On second press (in "easy-does-it" mode), trigger the `double_command`.
   local debounced_shift = FnUtils.debounce(function()
+    local mode = config.modes[config.active_mode]
     if state.shift_right_count == 1 then
       run_command(mode.command)
     elseif state.shift_right_count >= 2 then
