@@ -196,16 +196,14 @@ local setup_keymaps = function()
     desc = "[deckr41] Cancel ongoing suggestion or exit insert mode",
     modes = {
       i = function()
-        if state.job ~= nil then
-          cancel_suggestion()
-        else
-          -- Send the key as normal input
-          vim.api.nvim_feedkeys(
-            vim.api.nvim_replace_termcodes("<Escape>", true, false, true),
-            "n",
-            true
-          )
-        end
+        if state.job ~= nil then cancel_suggestion() end
+
+        -- Send the key as normal input to exit insert mode
+        vim.api.nvim_feedkeys(
+          vim.api.nvim_replace_termcodes("<Escape>", true, false, true),
+          "n",
+          true
+        )
       end,
     },
   })
