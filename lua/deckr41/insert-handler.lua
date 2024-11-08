@@ -123,6 +123,7 @@ local function run_command(name)
     cursor = pinpoint.cursor,
     on_start = function(cmd_config)
       state.suggestion_ui.update({
+        value = "",
         meta = string.format("%s / %s ", name, cmd_config.model),
       })
       state.suggestion_ui.show()

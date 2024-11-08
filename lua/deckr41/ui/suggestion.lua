@@ -107,10 +107,7 @@ function M.build(user_config)
     state.loading_start_time = nil
     state.loading_duration = nil
 
-    if state.textarea_ui then
-      state.textarea_ui.hide()
-      state.textarea_ui = nil
-    end
+    if state.textarea_ui then state.textarea_ui.hide() end
   end
 
   --- @param status SuggestionUIStatus
