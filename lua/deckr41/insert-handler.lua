@@ -12,6 +12,9 @@ local Commands = require("deckr41.commands")
 --- @class InsertModeHandler
 local M = {}
 
+-- Shutdown code (41) used when cursor moves or Escape key pressed.
+local JOB_CANCEL_CODE = 41
+
 --- @alias InsertModeName "easy-does-it"|"r-for-rocket"
 
 --- @class InsertModeEasyDoesIt
@@ -99,7 +102,7 @@ local function cancel_suggestion()
   -- Force the user to make a change before suggesting again.
   state.can_auto_trigger = false
   if state.job then
-    state.job:shutdown(41)
+    state.job:shutdown(JOB_CANCEL_CODE)
     state.job = nil
   end
   state.suggestion_ui.hide()
@@ -132,9 +135,8 @@ local function run_command(name)
       state.suggestion_ui.update({ status = "done" })
     end,
     on_error = function(response)
-      -- 41 is the shutdown code used when the cursor moves. We only want
-      -- to fill and display the response if it's an OS or API error
-      if response and response.exit ~= 41 then
+      -- Only display response for OS or backend errors.
+      if response and response.exit ~= JOB_CANCEL_CODE then
         state.suggestion_ui.append_text(response.message)
       end
       state.suggestion_ui.update({ status = "done" })
