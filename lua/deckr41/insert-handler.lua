@@ -210,52 +210,45 @@ local setup_keymaps = function()
 end
 
 --- Setup autocommands based on the mode
+--- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
 local setup_autocmds = function()
+  local mode = config.modes[config.active_mode]
   local augroup =
     vim.api.nvim_create_augroup("D41InsertModeGroup", { clear = true })
 
-  -- Stop ongoing jobs or hide the current suggestion box when moving the cursor.
-  vim.api.nvim_create_autocmd("CursorMovedI", {
-    group = augroup,
-    callback = cancel_suggestion,
-  })
-
-  -- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
-  local mode = config.modes[config.active_mode]
   local trigger_suggestion, suggestion_timer = FnUtils.debounce(function()
-    if config.active_mode ~= "r-for-rocket" then return end
-    if state.can_auto_trigger then run_command(mode.command) end
-  end, {
-    reset_duration = config.modes["r-for-rocket"].timeout,
-  })
+    if state.is_applying_suggestion then return end
+    if not state.can_auto_trigger then return end
 
-  vim.api.nvim_create_autocmd("InsertEnter", {
-    group = augroup,
-    callback = function()
-      state.can_auto_trigger = true
-      trigger_suggestion()
-    end,
-  })
+    run_command(mode.command)
+  end, { reset_duration = mode.timeout or 1000 })
 
-  vim.api.nvim_create_autocmd("TextChangedI", {
+  -- This will cancel the suggestion in both modes, not only "r-for-rocket".
+  vim.api.nvim_create_autocmd({ "InsertLeave", "CursorMovedI" }, {
     group = augroup,
-    callback = function()
-      if not state.is_applying_suggestion then
-        state.can_auto_trigger = true
-        trigger_suggestion()
-      end
-    end,
-  })
-
-  vim.api.nvim_create_autocmd("InsertLeave", {
-    group = augroup,
+    -- TODO: When entering INSERT mode via "o" (new line + insert mode)
+    -- and indentation is involved, moving the cursor will ALSO trigger a
+    -- TextChangedI event which will trigger a new suggestion, counter to
+    -- us not expecting it since we didnt change anything, we just
+    -- moved the cursor.
     callback = function()
       -- Stop timer to cancel potential trailing call. This prevents the
       -- suggestion_ui from popping up after user exited INSERT mode and
       -- moved on to something else.
       suggestion_timer:stop()
+      cancel_suggestion()
     end,
   })
+
+  if config.active_mode == "r-for-rocket" then
+    vim.api.nvim_create_autocmd({ "InsertEnter", "TextChangedI" }, {
+      group = augroup,
+      callback = function()
+        state.can_auto_trigger = true
+        trigger_suggestion()
+      end,
+    })
+  end
 end
 
 --
@@ -286,6 +279,7 @@ function M.set_active_mode(mode)
     Logger.error("Invalid mode", { mode = mode })
   end
   config.active_mode = mode
+  setup_autocmds()
 end
 
 --- Get the list of available insert modes.
