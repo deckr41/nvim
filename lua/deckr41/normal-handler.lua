@@ -1,3 +1,4 @@
+--- Utilities imports
 local ArrayUtils = require("deckr41.utils.array")
 local Logger = require("deckr41.utils.loggr")("NormalModeHandler")
 local NVimUtils = require("deckr41.utils.nvim")
@@ -30,7 +31,6 @@ local function can_accept() return state.job ~= nil and state.job.is_shutdown en
 --- selected range.
 local function apply()
   local pinpoint = Pinpointer.get()
-
   WindowUtils.insert_text_at(state.suggestion_ui.get_text(), {
     win_id = pinpoint.win_id,
     cursor = pinpoint.cursor,
@@ -55,7 +55,10 @@ end
 --- @return string
 local function get_command_preview(command)
   local pinpoint = Pinpointer.get()
-  local system_prompt, prompt = Commands.compile(command, {
+  local system_prompt, prompt = Commands.compile({
+    prompt = command.prompt,
+    system_prompt = command.system_prompt,
+  }, {
     win_id = pinpoint.win_id,
     cursor = pinpoint.cursor,
     range = pinpoint.range,
@@ -111,9 +114,9 @@ local setup_commands = function()
     desc = "[deckr41] Run command",
     range = 2,
     action = function(cmd_opts)
-      Pinpointer.take_snapshot(cmd_opts.range == 2 and {
-        range = { cmd_opts.line1, cmd_opts.line2 },
-      } or nil)
+      Pinpointer.take_snapshot({
+        with_range = cmd_opts.range == 2,
+      })
 
       local file_path = vim.api.nvim_buf_get_name(0)
       local rc_nodes = Commands.find_nodes(file_path)
@@ -201,6 +204,7 @@ M.setup = function()
         range = pinpoint.range,
         on_start = function(cmd_config)
           state.suggestion_ui.update({
+            value = "",
             meta = string.format("%s / %s ", item.id, cmd_config.model),
           })
           state.suggestion_ui.show()

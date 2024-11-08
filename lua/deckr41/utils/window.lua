@@ -1,16 +1,17 @@
 local Logger = require("deckr41.utils.loggr")("WindowUtils")
 
+local MAX_LINE_LENGTH = 2 ^ 31 - 1
+
 --- @class WindowUtils
 local M = {}
 
 --- Replace a range in a buffer with the given new lines.
---- @param range string[]
+--- @param range { start_pos: integer[], end_pos: integer[] }
 --- @param opts { buf_id: integer, with_lines: string[] }
 local replace_range = function(range, opts)
-  local start_row = range[1] - 1
-  local end_row = range[2] - 1
+  local start_row = range.start_pos[1] - 1
+  local end_row = range.end_pos[1] - 1
 
-  -- Replace range with the new lines
   vim.api.nvim_buf_set_lines(
     opts.buf_id,
     start_row,
@@ -47,7 +48,7 @@ end
 --- @class WriteAtCursorOpts
 --- @field win_id integer
 --- @field cursor integer[]
---- @field range? integer[]
+--- @field range? { start_pos: integer[], end_pos: integer[] }
 --- @field clear_ahead? boolean
 ---
 
@@ -81,107 +82,76 @@ M.insert_text_at = function(input, opts)
   )
 end
 
--- Get the lines before & after the current line and
--- text before & after the cursor on the current line.
---- @param opts { win_id: integer, cursor: integer[] }
---- @return string[]: Lines before row position
---- @return string[]: Lines after row position
---- @return string: Text before col position on the current line
---- @return string: Text after col position on the current line
-M.split_lines_by_cursor = function(opts)
-  local buf_id = vim.api.nvim_win_get_buf(opts.win_id)
-  local row = opts.cursor[1]
-  local col = opts.cursor[2]
-
-  local lines_before = vim.api.nvim_buf_get_lines(buf_id, 0, row - 1, false)
-  local lines_after = vim.api.nvim_buf_get_lines(buf_id, row, -1, false)
-
-  local current_line =
-    vim.api.nvim_buf_get_lines(buf_id, row - 1, row, false)[1]
-  local text_before = string.sub(current_line, 1, col)
-  local text_after = string.sub(current_line, col + 1)
-
-  return lines_before, lines_after, text_before, text_after
-end
-
---- @param opts ?{ win_id?: integer }
+--- @param buf_id integer
 --- @return string
-M.get_text = function(opts)
-  opts = opts or {}
-  local win_id = opts.win_id or vim.api.nvim_get_current_win()
-  local buf_id = vim.api.nvim_win_get_buf(win_id)
-  local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
-
-  return table.concat(lines, "\n")
-end
-
---- @param opts ?{ win_id?: integer }
---- @return string
-M.get_file_content = function(opts)
-  opts = opts or {}
-  local win_id = opts.win_id or vim.api.nvim_get_current_win()
-  local buf_id = vim.api.nvim_win_get_buf(win_id)
+M.get_buffer_content = function(buf_id)
   local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 
   return table.concat(lines, "\n")
 end
 
 --- @param buf_id integer
---- @param opts { range: integer[] }
+--- @param range { start_pos: integer[], end_pos: integer[]  }
 --- @return string
-M.get_selected_text = function(buf_id, opts)
-  local start_pos = opts.range[1]
-  local end_pos = opts.range[2]
-  local lines =
-    vim.api.nvim_buf_get_text(buf_id, start_pos - 1, 0, end_pos, 0, {})
+M.get_text_by_range = function(buf_id, range)
+  -- Adjust row indices: Neovim uses 0-based indexing, so subtract 1 from row numbers
+  local start_row_zero_indexed = range.start_pos[1] - 1
+  local end_row_zero_indexed = range.end_pos[1] - 1
+
+  local lines = vim.api.nvim_buf_get_text(
+    buf_id,
+    start_row_zero_indexed,
+    range.start_pos[2],
+    end_row_zero_indexed,
+    -- extends the end column to include the last character under the cursor
+    range.end_pos[2] + 1,
+    {}
+  )
 
   return table.concat(lines, "\n")
 end
 
---- @type table<string, fun(buf_id:integer, opts: { range?: integer[], cursor: integer[] }): string>
-local metadata_getters = {
-  FILE_PATH = function(buf_id) return vim.api.nvim_buf_get_name(buf_id) end,
+--- @class MetadataGetterOptions
+--- @field cursor integer[]
+--- @field range { start_pos: integer[], end_pos: integer[] }
+
+--- @type table<string, fun(buf_id:integer, opts: MetadataGetterOptions): string>
+local META_GETTERS = {
+  FILE_PATH = vim.api.nvim_buf_get_name,
+  FILE_CONTENT = M.get_buffer_content,
   FILE_SYNTAX = function(buf_id)
     return vim.api.nvim_get_option_value("filetype", { buf = buf_id })
   end,
   LINES_BEFORE_CURRENT = function(buf_id, opts)
-    local row = opts.cursor[1]
-    local lines_before = vim.api.nvim_buf_get_lines(buf_id, 0, row - 1, false)
-    return table.concat(lines_before, "\n")
+    return M.get_text_by_range(buf_id, {
+      start_pos = { 1, 0 },
+      end_pos = { opts.cursor[1] - 1, MAX_LINE_LENGTH },
+    })
   end,
   LINES_AFTER_CURRENT = function(buf_id, opts)
-    local row = opts.cursor[1]
-    local lines_after = vim.api.nvim_buf_get_lines(buf_id, row, -1, false)
-    return table.concat(lines_after, "\n")
+    local max_lines = vim.api.nvim_buf_line_count(buf_id)
+
+    return M.get_text_by_range(buf_id, {
+      start_pos = { math.min(max_lines, opts.cursor[1] + 1), 0 },
+      end_pos = { 0, MAX_LINE_LENGTH },
+    })
   end,
   TEXT_BEFORE_CURSOR = function(buf_id, opts)
-    local row = opts.cursor[1]
-    local col = opts.cursor[2]
-    local current_line =
-      vim.api.nvim_buf_get_lines(buf_id, row - 1, row, false)[1]
-
-    return string.sub(current_line, 1, col)
+    return M.get_text_by_range(buf_id, {
+      start_pos = { opts.cursor[1], 0 },
+      end_pos = opts.cursor,
+    })
   end,
   TEXT_AFTER_CURSOR = function(buf_id, opts)
-    local row = opts.cursor[1]
-    local col = opts.cursor[2]
-    local current_line =
-      vim.api.nvim_buf_get_lines(buf_id, row - 1, row, false)[1]
-    return string.sub(current_line, col + 1)
+    return M.get_text_by_range(buf_id, {
+      start_pos = opts.cursor,
+      end_pos = { opts.cursor[1], MAX_LINE_LENGTH },
+    })
   end,
   TEXT = function(buf_id, opts)
-    local lines = {}
+    if opts.range then return M.get_text_by_range(buf_id, opts.range) end
 
-    if opts.range then
-      local start_pos = opts.range[1]
-      local end_pos = opts.range[2]
-      lines =
-        vim.api.nvim_buf_get_text(buf_id, start_pos - 1, 0, end_pos, 0, {})
-    else
-      lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
-    end
-
-    return table.concat(lines, "\n")
+    return M.get_buffer_content(buf_id)
   end,
 }
 
@@ -193,7 +163,7 @@ M.get_metadata = function(names, opts)
   local metadata_dict = {}
 
   for _, var_name in ipairs(names) do
-    local getter = metadata_getters[var_name]
+    local getter = META_GETTERS[var_name]
     if getter then
       metadata_dict[var_name] =
         getter(buf_id, { range = opts.range, cursor = opts.cursor })
