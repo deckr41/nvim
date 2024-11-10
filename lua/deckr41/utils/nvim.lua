@@ -74,8 +74,22 @@ M.add_keymaps = function(opts)
   end
 end
 
+---@class CommandActionOpts
+---@field name string Command name
+---@field args string Arguments passed to the command
+---@field fargs table Arguments split by unescaped whitespace
+---@field nargs string Number of arguments `:command-nargs`
+---@field bang boolean True if executed with a ! modifier
+---@field line1 number Starting line of the command range
+---@field line2 number Final line of the command range
+---@field range number Number of items in the command range
+---@field count number Count supplied
+---@field reg string Optional register
+---@field mods string Command modifiers
+---@field smods table Structured command modifiers
+
 ---@class AddCommandOpts: vim.api.keyset.user_command
----@field action function
+---@field action fun(opts: CommandActionOpts)
 
 --- Creates a global |user-commands| command.
 --- Wrapper over `vim.api.nvim_create_user_command` with following defaults:
