@@ -1,6 +1,22 @@
 --- @class TableUtils Domain agnostic table related pure primitives
 local M = {}
 
+--- Sort an array
+--- @generic T
+--- @param array T[]
+--- @param opts? { should_mutate?: boolean, comparator?: fun(a: T, b: T): boolean }
+--- @return T[]
+M.sort = function(array, opts)
+  opts = opts or {}
+  local comparator = opts.comparator
+  local should_mutate = opts.should_mutate ~= false
+
+  if not should_mutate then array = vim.deepcopy(array) end
+
+  table.sort(array, comparator)
+  return array
+end
+
 --- Extract the values from a dictionary (named table) or array (indexed table)
 --- and return them as an array (indexed table)
 --- @generic T

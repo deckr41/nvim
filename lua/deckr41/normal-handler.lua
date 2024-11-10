@@ -5,6 +5,7 @@ local NVimUtils = require("deckr41.utils.nvim")
 local Pinpointer = require("deckr41.utils.pinpointr")
 local SelectUI = require("deckr41.ui.select")
 local SuggestionUI = require("deckr41.ui.suggestion")
+local TableUtils = require("deckr41.utils.table")
 local WindowUtils = require("deckr41.utils.window")
 
 --- Domain imports
@@ -98,13 +99,16 @@ local build_commands_menu_item_groups = function(rc_nodes)
       }
       table.insert(commands_array, command_select_item)
     end
-    table.sort(commands_array, function(a, b) return a.label < b.label end)
+
     result_array[#result_array + 1] = {
       id = rc_node.path,
       label = rc_node.data.project.icon .. " " .. rc_node.data.project.name,
-      items = commands_array,
+      items = TableUtils.sort(commands_array, {
+        comparator = function(a, b) return a.label < b.label end,
+      }),
     }
   end
+
   return result_array
 end
 

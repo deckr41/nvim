@@ -68,22 +68,26 @@ M.setup = function(user_config)
 
   --- @return SelectUIItemGroup[]
   local build_control_panel_item_groups = function()
-    local to_item = function(text) return { id = text, text = text } end
+    local keyboard_modes = TableUtils.sort(InsertModeHandler.get_modes())
+    local backend_names = TableUtils.sort(Backend.get_backend_names())
+    local backend_models = TableUtils.sort(Backend.get_available_models())
+    local to_select_item = function(text) return { id = text, text = text } end
+
     return {
       {
         id = "[keyboard]",
         selected = InsertModeHandler.get_active_mode(),
-        items = TableUtils.imap(InsertModeHandler.get_modes(), to_item),
+        items = TableUtils.imap(keyboard_modes, to_select_item),
       },
       {
         id = "[backends]",
         selected = Backend.get_active_backend(),
-        items = TableUtils.imap(Backend.get_backend_names(), to_item),
+        items = TableUtils.imap(backend_names, to_select_item),
       },
       {
         id = "[models]",
         selected = Backend.get_active_model(),
-        items = TableUtils.imap(Backend.get_available_models(), to_item),
+        items = TableUtils.imap(backend_models, to_select_item),
       },
     }
   end
