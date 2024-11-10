@@ -15,35 +15,35 @@ local M = {}
 -- Shutdown code (41) used when cursor moves or Escape key pressed.
 local JOB_CANCEL_CODE = 41
 
---- @alias InsertModeName "easy-does-it"|"r-for-rocket"
+--- @alias InsertModeName "on-demand"|"autocomplete"
 
---- @class InsertModeEasyDoesIt
+--- @class InsertModeOnDemand
 --- @field command string
 --- @field double_command string
 
---- @class InsertModeRForRocket
+--- @class InsertModeAutocomplete
 --- @field timeout integer
 --- @field command string
 
 --- @class InsertModes
---- @field ["easy-does-it"] InsertModeEasyDoesIt
---- @field ["r-for-rocket"] InsertModeRForRocket
+--- @field ["on-demand"] InsertModeOnDemand
+--- @field ["autocomplete"] InsertModeAutocomplete
 
 --- @class InsertModeConfig
 --- @field modes InsertModes
 --- @field active_mode InsertModeName
 local config = {
   modes = {
-    ["easy-does-it"] = {
+    ["on-demand"] = {
       command = "finish-line",
       double_command = "finish-section",
     },
-    ["r-for-rocket"] = {
+    ["autocomplete"] = {
       command = "finish-section",
       timeout = 1000,
     },
   },
-  active_mode = "easy-does-it",
+  active_mode = "on-demand",
 }
 
 --- @class InsertModeState
@@ -149,7 +149,7 @@ end
 local setup_keymaps = function()
   --- Debounced function to handle accumulated Shift+RightArrow presses.
   --- On first press, trigger the mode's `command`.
-  --- On second press (in "easy-does-it" mode), trigger the `double_command`.
+  --- On second press (in "on-demand" mode), trigger the `double_command`.
   local debounced_shift = FnUtils.debounce(function()
     local mode = config.modes[config.active_mode]
     if state.shift_right_count == 1 then
@@ -213,7 +213,7 @@ local setup_keymaps = function()
 end
 
 --- Setup autocommands based on the mode
---- In 'r-for-rocket' mode, trigger suggestions on InsertEnter and TextChangedI
+--- In 'autocomplete' mode, trigger suggestions on InsertEnter and TextChangedI
 local setup_autocmds = function()
   local mode = config.modes[config.active_mode]
   local augroup =
@@ -226,7 +226,7 @@ local setup_autocmds = function()
     run_command(mode.command)
   end, { reset_duration = mode.timeout or 1000 })
 
-  -- This will cancel the suggestion in both modes, not only "r-for-rocket".
+  -- This will cancel the suggestion in both modes, not only "autocomplete".
   vim.api.nvim_create_autocmd({ "InsertLeave", "CursorMovedI" }, {
     group = augroup,
     -- TODO: When entering INSERT mode via "o" (new line + insert mode)
@@ -243,7 +243,7 @@ local setup_autocmds = function()
     end,
   })
 
-  if config.active_mode == "r-for-rocket" then
+  if config.active_mode == "autocomplete" then
     vim.api.nvim_create_autocmd({ "InsertEnter", "TextChangedI" }, {
       group = augroup,
       callback = function()

@@ -25,8 +25,9 @@ and composing Pure Agents to build features across your entire codebase.
 
 ### Implemented Features
 
-- [x] **Custom Keyboard Modes**: Use `easy-does-it` for on-demand code
-  suggestions or `r-for-rocket` for real-time as you type suggestions.
+- [x] **Custom Keyboard Modes**: Choose between `on-demand` mode for code
+  suggestions triggered manually, or `autocomplete` mode for real-time
+  suggestions as you type.
 - [x] **Run Commands in NORMAL and VISUAL Modes**: Execute custom context aware
   AI prompts directly from your editor.
 - [x] **Dynamic Backend and Model Switching**: Change AI backends and models at
@@ -394,10 +395,10 @@ default.
 
 ### Modes
 
-- **`easy-does-it`** - Suggestions on demand with `<S-Right>`:
+- **`on-demand`** - Suggestions on demand with `<S-Right>`:
   - Press once to trigger the [`finish-line`](.d41rc#L28) command.
   - Press twice quickly to trigger the [`finish-section`](.d41rc#L56) command.
-- **`r-for-rocket`** - Real-time suggestions with 1000ms debounce in INSERT
+- **`autocomplete`** - Real-time suggestions with 1000ms debounce in INSERT
   mode. 
 
 Configure modes in the `modes` key of your setup.
@@ -412,22 +413,22 @@ opts = {
   -- Mode configuration
   --
   modes = {
-    ["easy-does-it"] = {
+    ["on-demand"] = {
       -- Command triggered by pressing `<S-Right>` once.
       command = "finish-line",
 
       -- Command triggered by pressing `2x<S-Right>` quickly.
       double_command = "finish-section",
     },
-    ["r-for-rocket"] = {
+    ["autocomplete"] = {
       -- Command triggered when entering or writing in INSERT mode.
       command = "finish-section",
 
-      -- Debounce timeout in milliseconds, relevant for `r-for-rocket` mode.
+      -- Debounce timeout in milliseconds, relevant for `autocomplete` mode.
       timeout = 1000,
     },
   },
-  active_mode = "easy-does-it",
+  active_mode = "on-demand",
 
   --
   -- Backend configurations
